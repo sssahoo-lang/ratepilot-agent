@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import jsPDF from "jspdf";
 import { Logo, NavIcon, BRAND_NAME, BRAND_TAGLINE } from "./components/Logo.jsx";
 import {
   API,
@@ -12,6 +13,135 @@ import {
   STEP_LABELS,
 } from "./constants.js";
 import { getMonthlySavings, getBestOfferSavings } from "./utils/savings.js";
+
+function exportNegotiationPDF(negotiation) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 20;
+  const maxWidth = 170;
+  const bottomY = 270;
+  const lineHeight = 6;
+  let y = margin;
+
+  const asObject = (value) => {
+    if (!value) return {};
+    if (typeof value === "object") return value;
+    try { return JSON.parse(value); } catch { return {}; }
+  };
+  const asText = (value) => typeof value === "string" ? value : "";
+  const money = (value) => value == null || value === "" ? "—" : "$" + Number(value).toFixed(2);
+  const plainMoney = (value) => "$" + (Number(value) || 0).toFixed(2);
+  const titleCase = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const research = asObject(negotiation.research_findings);
+  const strategy = asObject(negotiation.strategy);
+  const strategyText = asText(negotiation.strategy);
+  const steps = negotiation.steps || [];
+  const firstEmail = steps.find((step) => step.step_type === "email_draft");
+  const emailContent = firstEmail?.content && typeof firstEmail.content === "object" ? firstEmail.content : asObject(firstEmail?.content);
+  const monthlySavings = Math.max(getMonthlySavings(negotiation), getBestOfferSavings(negotiation));
+  const providerSlug = (negotiation.provider || "provider").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const ensureSpace = (needed = lineHeight) => {
+    if (y + needed > bottomY) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+  const writeLines = (text, options = {}) => {
+    const {
+      size = 10,
+      style = "normal",
+      color = [35, 35, 35],
+      indent = 0,
+      gapAfter = 0,
+    } = options;
+    doc.setFont("helvetica", style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(String(text || "—"), maxWidth - indent);
+    lines.forEach((line) => {
+      ensureSpace(lineHeight);
+      doc.text(line, margin + indent, y);
+      y += lineHeight;
+    });
+    y += gapAfter;
+  };
+  const section = (label) => {
+    y += 6;
+    ensureSpace(8);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(20, 20, 20);
+    doc.text(label, margin, y);
+    y += 7;
+  };
+  const bulletList = (items) => {
+    (items || []).slice(0, 4).forEach((item) => writeLines("• " + item, { indent: 3 }));
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(20, 20, 20);
+  doc.text("BillFight — Negotiation Summary", margin, y);
+  y += 9;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`${negotiation.provider || "Unknown Provider"} — ${titleCase(negotiation.bill_type || "bill")}`, margin, y);
+  y += 7;
+  doc.setFontSize(10);
+  doc.text("Date: " + new Date(negotiation.created_at || Date.now()).toLocaleDateString(), margin, y);
+  y += 5;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, margin + maxWidth, y);
+
+  section("Original Bill");
+  writeLines("Original monthly amount: " + money(negotiation.current_amount) + " / month");
+  writeLines("Target price: " + money(negotiation.target_price) + " / month");
+  writeLines("Walkaway threshold: " + money(negotiation.walkaway_threshold) + " / month");
+
+  section("Market Research");
+  writeLines(research.research_summary || "No market research summary available.");
+  (research.competitor_prices || []).slice(0, 3).forEach((item) => {
+    writeLines(`${item.provider || "Competitor"}: ${money(item.price)} / month${item.plan ? " — " + item.plan : ""}`);
+  });
+  writeLines("Market average price: " + money(research.market_average) + " / month");
+  bulletList(research.leverage_points || []);
+
+  section("Negotiation Strategy");
+  if (strategyText && Object.keys(strategy).length === 0) {
+    writeLines(strategyText);
+  } else {
+    const opening = strategy.opening_position || strategy.opening_ask || strategy.primary_leverage || strategy.strategy_summary;
+    writeLines(opening || "No strategy summary available.");
+    bulletList(strategy.key_arguments || strategy.leverage_points || strategy.key_phrases || []);
+  }
+
+  section("Negotiation Email Sent");
+  if (emailContent?.subject) writeLines("Subject: " + emailContent.subject, { style: "bold" });
+  const emailBody = emailContent?.body ? (emailContent.body.length > 800 ? emailContent.body.slice(0, 800) + "..." : emailContent.body) : "No email draft found.";
+  writeLines(emailBody);
+
+  section("Outcome");
+  const outcome = negotiation.status === "won" ? "Won" : negotiation.status === "closed_no_deal" ? "No Deal" : "In Progress";
+  writeLines("Status: " + outcome);
+  if (negotiation.best_offer_received != null) writeLines("Best offer received: " + money(negotiation.best_offer_received) + " / month");
+  writeLines("Monthly savings: " + plainMoney(monthlySavings) + " saved per month");
+  writeLines("Annual savings: " + plainMoney(monthlySavings * 12) + " saved per year");
+  writeLines("Rounds of negotiation: " + (negotiation.rounds_count || steps.filter((step) => step.step_type === "email_draft").length || 0) + " rounds");
+  if (negotiation.status === "won") writeLines("✓ Successfully negotiated a lower rate", { style: "bold", color: [40, 140, 80] });
+
+  const today = new Date().toLocaleDateString();
+  const pages = doc.getNumberOfPages();
+  for (let page = 1; page <= pages; page += 1) {
+    doc.setPage(page);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Generated by BillFight • billfight.app • ${today}`, margin, 287);
+  }
+
+  doc.save(`billfight-${providerSlug}-${negotiation.id}.pdf`);
+}
 
 function providerInitials(name) {
   if (!name) return "?";
@@ -412,12 +542,8 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
   const canSendEmail = ["awaiting_reply", "drafting"].includes(negotiation.status) && lastEmail && !hasEmailSent;
 
   const exportTranscript = () => {
-    const blob = new Blob([JSON.stringify(negotiation, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `ratepilot-${negotiation.provider?.replace(/\s+/g, "-")}-${negotiation.id}.json`;
-    a.click();
-    showToast("Transcript exported");
+    exportNegotiationPDF(negotiation);
+    showToast("PDF summary exported");
   };
 
   const copySummary = () => {
@@ -546,7 +672,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                 {retrying ? "Retrying..." : "Retry Negotiation"}
               </button>
             )}
-            <button type="button" className="btn btn-secondary" onClick={exportTranscript}>Export transcript</button>
+            <button type="button" className="btn btn-secondary" onClick={exportTranscript}>Export PDF Summary</button>
             <button type="button" className="btn btn-secondary" onClick={copySummary}>Copy summary</button>
             {emailContent?.body && (
               <button
@@ -629,7 +755,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
           {tab === "actions" && (
             <div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={exportTranscript}>Export transcript</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={exportTranscript}>Export PDF Summary</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={copySummary}>Copy summary</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={handleDelete} disabled={deleting} style={{ color: "var(--rose)" }}>
                   {deleting ? "Deleting…" : "Delete"}
