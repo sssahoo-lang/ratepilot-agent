@@ -1,78 +1,118 @@
-# BillFight — Autonomous Bill Negotiation Agent
-
-An agentic AI system that autonomously researches competitor pricing, builds a negotiation strategy, drafts emails, and conducts multi-turn negotiations to lower your bills — all powered by Claude.
+# BillFight
+> AI-powered bill negotiation agent that researches competitor pricing and negotiates lower rates autonomously.
 
 ## What it does
 
-1. **Parse** — Upload a bill (PDF or TXT). Claude extracts provider, amount, tenure, contract status.
-2. **Research** — Claude uses web search to find live competitor pricing and current promotions.
-3. **Strategize** — Claude identifies your leverage points and sets target price + walk-away threshold.
-4. **Draft** — Claude writes a grounded negotiation email citing specific competitor prices.
-5. **Negotiate** — Paste the company's reply. Claude interprets it, decides to accept/counter/escalate, and drafts the next move.
-6. **Dashboard** — Full audit trail of every decision and why the agent made it.
+BillFight helps people lower recurring bills by turning a bill upload into an autonomous negotiation workflow. A user uploads a PDF, text export, or photo of a bill; the agent extracts the key account details, researches live competitor pricing, builds a negotiation strategy, and drafts a provider-ready email. The app can send that email through Gmail, track provider replies, classify the next best action, and preserve every step in a negotiation timeline. Savings outcomes are summarized in a dashboard with monthly savings, annual projections, win rate, and per-negotiation PDF exports.
 
-## Architecture
+## How the agent works
 
-```
-frontend (React + Vite)
-    ↕ REST API
-backend (FastAPI + Python)
-    ├── bills router       — PDF upload, Claude parsing
-    ├── agent router       — pipeline orchestration
-    ├── negotiations router — state + history queries
-    └── agent_service.py  — all Claude API calls
-        ├── parse_bill()           — structured extraction
-        ├── research_competitors() — web search tool
-        ├── build_strategy()       — reasoning engine
-        ├── draft_negotiation_email() — email generation
-        ├── interpret_response()   — reply classification
-        └── generate_final_summary() — outcome report
-```
+1. Upload — user uploads bill (PDF, TXT, or photo)
+2. Parse — Claude vision or text extraction reads the bill
+3. Research — live web search retrieves real competitor pricing
+4. Strategy — agent builds negotiation strategy with target price, walkaway threshold, and leverage points
+5. Draft — agent writes a personalized negotiation email
+6. Send — email sent directly to provider via Gmail
+7. Classify — agent reads provider reply and decides: accept, counter, or escalate
+8. Track — outcome logged, savings dashboard updated
 
 ## Tech stack
 
-- **Backend**: Python, FastAPI, aiosqlite, pypdf
-- **Frontend**: React 18, Vite
-- **AI**: Anthropic Claude claude-sonnet-4-20250514 with web search tool
-- **Database**: SQLite (easily swappable to PostgreSQL)
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, Vite, vanilla CSS |
+| Backend | Python, FastAPI, SQLite |
+| AI | Anthropic Claude API, web search tool use |
+| Email | Gmail API via OAuth |
+| Deploy | Railway (backend), Netlify (frontend) |
 
-## Setup
+## Project structure
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Anthropic API key
+```text
+.
+├── README.md
+├── agent_service.py
+├── database.py
+├── gmail_service.py
+├── main.py
+├── provider_emails.py
+├── requirements.txt
+├── sample_bill.txt
+├── seed_data.py
+├── routers/
+│   ├── __init__.py
+│   ├── agent.py
+│   ├── bills.py
+│   ├── email_router.py
+│   └── negotiations.py
+└── frontend/
+    ├── index.html
+    ├── package.json
+    ├── package-lock.json
+    ├── vite.config.js
+    └── src/
+        ├── App.jsx
+        ├── constants.js
+        ├── index.css
+        ├── main.jsx
+        ├── components/
+        │   └── Logo.jsx
+        └── utils/
+            └── savings.js
+```
 
-### Run
+## Local setup
+
+1. Clone the repo
 
 ```bash
-# 1. Set your API key
-export ANTHROPIC_API_KEY=your_key_here
+git clone <repo-url>
+cd billfight-agent
+```
 
-# 2. Backend
-cd backend
+2. Backend setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+export ANTHROPIC_API_KEY=your_claude_api_key
 python main.py
-# Runs on http://localhost:8000
+```
 
-# 3. Frontend (new terminal)
+The API runs at `http://localhost:8000`.
+
+3. Frontend setup
+
+```bash
 cd frontend
 npm install
 npm run dev
-# Opens http://localhost:5173
 ```
 
-## Demo walkthrough
+The frontend runs at `http://localhost:5173`. `frontend/.env.development` is included and points the app at `http://localhost:8000/api`.
 
-1. Open https://meek-tartufo-0c3f73.netlify.app/
-2. Click **Upload bill** 
-3. Upload `sample_bill.txt` (included) or your own bill PDF
-4. Click **Launch negotiation agent**
-5. Watch the agent research → strategize → draft in real time
-6. When status shows **Awaiting reply**, paste a simulated company response:
-   - `"The best we can offer is $149.99/month"`
-   - `"We can provide a loyalty discount bringing your bill to $130/month"`
-   - `"Unfortunately our pricing is fixed and we cannot offer discounts"`
-7. Agent interprets the reply, decides next move, drafts counter if needed
+4. Environment variables
 
+| Variable | Required | Description |
+| --- | --- | --- |
+| ANTHROPIC_API_KEY | Yes | Claude API key for agent pipeline |
+| SEED_DEMO_DATA | No | Set to "true" to seed demo negotiations |
 
+## Features
+
+- Autonomous multi-stage negotiation pipeline
+- Live competitor pricing via web search (not hallucinated)
+- PDF, TXT, and image bill upload with Claude vision
+- Real email sending to providers via Gmail API
+- Multi-turn negotiation with counter-offer context preserved
+- Savings dashboard with win rate, total saved, annual projection
+- Per-negotiation PDF export with full negotiation summary
+- Failed pipeline recovery with retry support
+- Dark/light theme toggle
+
+## Known limitations
+
+- Gmail OAuth requires local setup (`credentials.json`)
+- SQLite resets on Railway redeploy without a persistent volume
+- No user authentication — all negotiations are shared

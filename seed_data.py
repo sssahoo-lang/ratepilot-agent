@@ -3,11 +3,8 @@ import os
 from datetime import datetime, timedelta
 
 
-FALSE_VALUES = {"0", "false", "no", "off"}
-
-
 def demo_seed_enabled() -> bool:
-    return os.getenv("SEED_DEMO_DATA", "true").strip().lower() not in FALSE_VALUES
+    return os.getenv("SEED_DEMO_DATA", "").strip().lower() == "true"
 
 
 DEMO_BILLS = [
@@ -576,6 +573,7 @@ DEMO_NEGOTIATIONS = [
 
 async def seed_demo_data(db) -> None:
     if not demo_seed_enabled():
+        print("Demo data seeding skipped. Set SEED_DEMO_DATA=true to enable.")
         return
 
     async with db.execute("SELECT COUNT(*) FROM negotiations") as cursor:
