@@ -43,7 +43,9 @@ async def upload_bill(file: UploadFile = File(...)):
             raw_text = extract_text_from_pdf(content)
             if not raw_text.strip():
                 raise HTTPException(400, "Could not extract text from PDF")
-            extracted = parse_bill(raw_text)
+            # Truncate to avoid token rate limits
+            parse_text = raw_text[:3000]
+            extracted = parse_bill(parse_text)
         except HTTPException:
             raise
         except Exception as e:

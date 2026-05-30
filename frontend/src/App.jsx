@@ -1242,7 +1242,7 @@ function NegotiationOutcomeCard({ negotiation }) {
   const fmt = (n) => n != null ? "$" + Math.round(n).toLocaleString() : "—";
   const handleCopy = () => {
     const lines = [
-      negotiation.provider + " — RatePilot Negotiation",
+      negotiation.provider + " — BillFight Negotiation",
       "Original: " + fmt(original) + "/mo",
       hasOffer ? "Best offer: " + fmt(best) + "/mo" : "No offer received",
       hasOffer ? "Savings: " + fmt(savingsMonth) + "/mo · " + fmt(savingsYear) + "/yr (" + savingsPct + "% off)" : "",
