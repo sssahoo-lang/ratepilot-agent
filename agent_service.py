@@ -67,6 +67,12 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
             f"Compare {line_count}-line family plan pricing only. Do not use single-line pricing."
         )
 
+    messages = [{
+        "role": "user",
+        "content": f"Research {provider} {bill_type}. Current bill ${current_amount}. line_count={line_count}.{account_context}"
+    }]
+    print(f"RESEARCH USER MESSAGE: {messages[0]['content'][:500]}")
+
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
         model=MODEL,
@@ -83,12 +89,10 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
   "research_summary": "one sentence summary"
 }
 JSON only. No preamble.""",
-        messages=[{
-            "role": "user",
-            "content": f"Research {provider} {bill_type}. Current bill ${current_amount}. line_count={line_count}.{account_context}"
-        }],
+        messages=messages,
         tools=[{"type": "web_search_20250305", "name": "web_search"}]
     )
+    print(f"RESEARCH TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
     text_blocks = []
     for block in response.content:
         if block.type == "text":
@@ -113,6 +117,7 @@ def build_strategy(bill_data: dict, research: dict) -> dict:
             "content": f"Bill: {json.dumps(bill_data)}\nResearch: {json.dumps(research)}"
         }]
     )
+    print(f"STRATEGY TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
     return extract_json(response.content[0].text)
 
 
@@ -139,6 +144,7 @@ IMPORTANT: Use ONLY the exact account number provided below. Never invent or gue
 Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. No preamble.""",
         messages=[{"role": "user", "content": context}]
     )
+    print(f"EMAIL TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
     return extract_json(response.content[0].text)
 
 
