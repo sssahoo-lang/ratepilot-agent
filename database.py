@@ -1,4 +1,5 @@
 import aiosqlite
+from seed_data import seed_demo_data
 
 DB_PATH = "billfight.db"
 
@@ -45,3 +46,4 @@ async def init_db():
             )
         """)
         await db.commit()
+        await seed_demo_data(db)
