@@ -39,9 +39,10 @@ async def run_pipeline(bill_id, negotiation_id):
                 bill_row = await cursor.fetchone()
                 if not bill_row: return
                 bill = dict(bill_row)
-                bill_data = json.loads(bill['extracted_data']) if bill.get('extracted_data') else {}
+                bill_data = json.loads(bill.get('extracted_data') or '{}')
+                line_count = int(bill_data.get("line_count") or 1)
             await update_status(db, negotiation_id, "researching")
-            research = research_competitors(bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']))
+            research = research_competitors(bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']), line_count=line_count)
             if not research:
                 research = {"competitor_prices": [], "market_average": float(bill['current_amount']) * 0.8, "leverage_points": ["Long-term customer"], "recommended_target": float(bill['current_amount']) * 0.75, "walkaway_threshold": float(bill['current_amount']) * 0.9, "research_summary": "Market research completed."}
             await add_step(db, negotiation_id, "research", research, "Searched competitor pricing", f"Market average: ${research.get('market_average', 0):.2f}")
