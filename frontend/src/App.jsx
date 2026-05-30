@@ -153,7 +153,7 @@ function providerInitials(name) {
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.starting;
   return (
-    <span className="status-badge" style={{ background: cfg.bg, color: cfg.color }}>
+    <span className={`status-badge status-${status || "starting"}`}>
       {cfg.label}
     </span>
   );
@@ -486,7 +486,7 @@ function StepCard({ step, onCopyEmail, emailAction }) {
         <span className="step-time">{new Date(step.created_at).toLocaleString()}</span>
         {step.reasoning && <p className="step-body-text">{step.reasoning}</p>}
         {step.decision && (
-          <p className="step-body-text" style={{ color: "var(--accent)", fontWeight: 600 }}>
+          <p className="step-body-text" style={{ color: "var(--brand)", fontWeight: 600 }}>
             → {step.decision}
           </p>
         )}
@@ -656,7 +656,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
           <div className="detail-stats" style={{ marginTop: 16 }}>
             <div className="detail-stat-row"><span>Original</span><span>${negotiation.current_amount}/mo</span></div>
             <div className="detail-stat-row"><span>Target</span><span>{negotiation.target_price ? `$${negotiation.target_price}/mo` : "—"}</span></div>
-            <div className="detail-stat-row"><span>Savings</span><span className="mono" style={{ color: "var(--success)" }}>{savings > 0 ? "$" + savings.toFixed(0) + "/mo" : "—"}</span></div>
+            <div className="detail-stat-row"><span>Savings</span><span className="mono" style={{ color: "var(--green)" }}>{savings > 0 ? "$" + savings.toFixed(0) + "/mo" : "—"}</span></div>
             <div className="detail-stat-row"><span>Rounds</span><span>{steps.filter((s) => s.step_type === "email_draft").length}</span></div>
             <div className="detail-stat-row"><span>File</span><span>{negotiation.filename || "—"}</span></div>
           </div>
@@ -691,7 +691,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                 {restarting ? "Starting…" : "Restart negotiation"}
               </button>
             )}
-            <button type="button" className="btn btn-secondary" onClick={handleDelete} disabled={deleting} style={{ color: "var(--rose)", borderColor: "var(--rose)" }}>
+            <button type="button" className="btn btn-secondary" onClick={handleDelete} disabled={deleting} style={{ color: "var(--red)", borderColor: "var(--red)" }}>
               {deleting ? "Deleting…" : "Delete negotiation"}
             </button>
             <button type="button" className="btn btn-ghost" onClick={onBack}>← Back to list</button>
@@ -757,7 +757,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={exportTranscript}>Export PDF Summary</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={copySummary}>Copy summary</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={handleDelete} disabled={deleting} style={{ color: "var(--rose)" }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleDelete} disabled={deleting} style={{ color: "var(--red)" }}>
                   {deleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
@@ -776,7 +776,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                     <button type="button" className="btn btn-primary" onClick={handleSimulateReply} disabled={sending || !replyText.trim()}>
                       {sending ? "Processing…" : "Send to agent"}
                     </button>
-                    {msg && <span style={{ fontSize: 12, color: "var(--accent)" }}>{msg}</span>}
+                    {msg && <span style={{ fontSize: 12, color: "var(--brand)" }}>{msg}</span>}
                   </div>
                 </div>
               ) : (
@@ -939,7 +939,7 @@ function UploadView({ onDone, showToast }) {
           </button>
         )}
         {status && (
-          <p style={{ marginTop: 12, fontSize: 13, color: status.includes("Error") || status.includes("Failed") ? "var(--rose)" : "var(--text-muted)" }}>
+          <p style={{ marginTop: 12, fontSize: 13, color: status.includes("Error") || status.includes("Failed") ? "var(--red)" : "var(--text-muted)" }}>
             {uploading ? "⏳ " : ""}{status}
           </p>
         )}
@@ -1134,7 +1134,7 @@ function NegotiationsTable({ negotiations, loading, filter, sort, search, onOpen
                 <td>
                   {"$" + n.current_amount + "/mo"}
                   {n.best_offer_received
-                    ? <span style={{color:"#4ade80"}}> → ${Math.round(n.best_offer_received)}/mo</span>
+                    ? <span className="best-offer-inline"> → ${Math.round(n.best_offer_received)}/mo</span>
                     : n.target_price ? " → $" + n.target_price : ""}
                 </td>
                 <td className={Math.max(getMonthlySavings(n), getBestOfferSavings(n)) > 0 ? "savings-cell" : ""}>
@@ -1212,12 +1212,12 @@ const BACK_LABELS = {
 function OutcomeStat({ label, value, highlight }) {
   return (
     <div style={{
-      background: highlight ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.03)",
-      border: "1px solid " + (highlight ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.07)"),
+      background: highlight ? "color-mix(in srgb, var(--green-dim) 45%, transparent)" : "var(--bg-elevated)",
+      border: "1px solid " + (highlight ? "var(--green-dim)" : "var(--bg-border)"),
       borderRadius: 8, padding: "10px 12px",
     }}>
       <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: highlight ? "#4ade80" : "var(--text-primary, #fff)", fontFamily: "monospace" }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: highlight ? "var(--green)" : "var(--text-primary)", fontFamily: "var(--font-mono)" }}>{value}</div>
     </div>
   );
 }
@@ -1234,11 +1234,11 @@ function NegotiationOutcomeCard({ negotiation }) {
   const savingsPct = original > 0 && hasOffer ? Math.round((savingsMonth / original) * 100) : 0;
   const rounds = negotiation.rounds_count || 0;
   const statusMap = {
-    won: { label: "Deal accepted", dot: "#4ade80" },
-    closed_no_deal: { label: "Closed — no deal", dot: "#f87171" },
-    awaiting_reply: { label: "Offer pending", dot: "#fbbf24" },
+    won: { label: "Deal accepted", dot: "var(--green)" },
+    closed_no_deal: { label: "Closed — no deal", dot: "var(--red)" },
+    awaiting_reply: { label: "Offer pending", dot: "var(--yellow)" },
   };
-  const sc = statusMap[negotiation.status] || { label: negotiation.status, dot: "#71717a" };
+  const sc = statusMap[negotiation.status] || { label: negotiation.status, dot: "var(--text-muted)" };
   const fmt = (n) => n != null ? "$" + Math.round(n).toLocaleString() : "—";
   const handleCopy = () => {
     const lines = [
@@ -1254,7 +1254,7 @@ function NegotiationOutcomeCard({ negotiation }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "18px 20px", marginTop: 24 }}>
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--bg-border)", borderRadius: 12, padding: "18px 20px", marginTop: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-muted)" }}>NEGOTIATION OUTCOME</span>
@@ -1276,17 +1276,17 @@ function NegotiationOutcomeCard({ negotiation }) {
         {hasOffer && <OutcomeStat label="Reduction" value={savingsPct + "%"} highlight />}
       </div>
       {hasOffer && !dealClosed && (
-        <div style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#4ade80", lineHeight: 1.5 }}>
+        <div style={{ background: "color-mix(in srgb, var(--green-dim) 45%, transparent)", border: "1px solid var(--green-dim)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--green)", lineHeight: 1.5 }}>
           💡 <strong>{negotiation.provider}</strong> offered <strong>{fmt(best)}/mo</strong> — saving you <strong>{fmt(savingsYear)}/year</strong>. This offer is still on the table. Call their retention line to lock it in.
         </div>
       )}
       {dealClosed && (
-        <div style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#4ade80", lineHeight: 1.5 }}>
+        <div style={{ background: "color-mix(in srgb, var(--green-dim) 45%, transparent)", border: "1px solid var(--green-dim)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--green)", lineHeight: 1.5 }}>
           ✅ Deal closed — saving <strong>{fmt(savings)}/mo</strong> · <strong>{fmt(savings * 12)}/year</strong>.
         </div>
       )}
       {!hasOffer && (
-        <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
+        <div style={{ background: "color-mix(in srgb, var(--yellow-dim) 45%, transparent)", border: "1px solid var(--yellow-dim)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--yellow)", lineHeight: 1.5 }}>
           ⚠️ No concrete offer was made. Try calling {negotiation.provider} directly — phone agents have more flexibility.
         </div>
       )}
@@ -1477,7 +1477,7 @@ export default function App() {
   const topbarExtra = (
     <div className="topbar-actions">
       <div className="search-box">
-        <span style={{ color: "var(--text-subtle)" }}>⌕</span>
+        <span style={{ color: "var(--text-muted)" }}>⌕</span>
         <input
           placeholder="Search negotiations…"
           value={search}
@@ -1655,7 +1655,7 @@ export default function App() {
         backLabel={backLabel}
         breadcrumbs={view === "detail" ? (
           <>
-            <span style={{ color: "var(--text-subtle)" }}>/</span>
+            <span style={{ color: "var(--text-muted)" }}>/</span>
             <strong>{selected?.provider}</strong>
           </>
         ) : breadcrumbs}
