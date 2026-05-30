@@ -45,18 +45,30 @@ Return ONLY a JSON object with these exact fields:
   "account_tenure": "2 years 3 months",
   "contract_end": "March 2025 or null",
   "account_number": "last 4 digits or null",
+  "line_count": 1,
   "services": ["list of services included"],
   "payment_history": "good/unknown",
   "key_details": "any other important details"
 }
+line_count: count the number of phone lines or service lines on this bill. For a single person internet/cable bill this is 1. For a wireless family plan count each phone number listed as a separate line.
 No preamble. No markdown. JSON only.""",
         messages=[{"role": "user", "content": f"Parse this bill:\n\n{raw_text}"}]
     )
     return extract_json(response.content[0].text)
 
 
-def research_competitors(provider: str, bill_type: str, current_amount: float) -> dict:
+def research_competitors(provider: str, bill_type: str, current_amount: float, line_count: int = 1) -> dict:
     """Use Claude with web search to find competitor pricing."""
+    line_count = int(line_count or 1)
+    account_context = ""
+    if line_count > 1:
+        account_context = (
+            f"\nIMPORTANT: This is a {line_count}-LINE FAMILY/GROUP ACCOUNT. "
+            f"You MUST search for and compare {line_count}-line family plan pricing only. "
+            "Do NOT use single-line pricing — it is not comparable and will make the negotiation invalid. "
+            f"Search specifically for: '{provider} {line_count} lines price 2025' and competitor family plan pricing for {line_count} lines."
+        )
+
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
         model=MODEL,
@@ -74,12 +86,13 @@ After searching, return ONLY a JSON object:
   "leverage_points": ["specific facts that give the customer negotiation leverage"],
   "recommended_target": 55.00,
   "walkaway_threshold": 75.00,
+  "plan_context": "family-6-lines or individual",
   "research_summary": "2-3 sentence summary of findings"
 }
 No preamble. JSON only.""",
         messages=[{
             "role": "user",
-            "content": f"Research competitors for: {provider} {bill_type} service. Current monthly bill: ${current_amount}. Find current competitor pricing and promotions."
+            "content": f"Research competitors for: {provider} {bill_type} service. Current monthly bill: ${current_amount}. Find current competitor pricing and promotions.{account_context}"
         }],
         tools=[{"type": "web_search_20250305", "name": "web_search"}]
     )
@@ -125,7 +138,16 @@ Build the optimal negotiation strategy."""
 
 def draft_negotiation_email(bill_data: dict, research: dict, strategy: dict, round_num: int = 1, previous_response: Optional[str] = None) -> dict:
     """Use Claude to draft a negotiation email."""
-    context = f"""Bill data: {json.dumps(bill_data)}
+    account_number = bill_data.get("account_number") or "account on file"
+    line_count = int(bill_data.get("line_count") or 1)
+    line_context = ""
+    if line_count > 1:
+        line_context = (
+            f"\nThis customer has {line_count} lines. Frame all competitor comparisons using {line_count}-line family plan pricing. "
+            f"Mention that switching {line_count} lines simultaneously, especially with active device installment plans, is a major disruption — use this as negotiation leverage."
+        )
+    context = f"""Account number: {account_number}
+Bill data: {json.dumps(bill_data)}
 Research: {json.dumps(research)}
 Strategy: {json.dumps(strategy)}
 Round: {round_num}"""
@@ -135,20 +157,21 @@ Round: {round_num}"""
     response = client.messages.create(
         model=MODEL,
         max_tokens=1500,
-        system="""You are an expert negotiator drafting customer retention emails.
+        system=f"""You are an expert negotiator drafting customer retention emails.
 Write professional, firm but polite emails that cite specific competitor prices.
+IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.
 IMPORTANT: Always include the customer's full account number, full name, and specific plan details from the bill data.
 Never use placeholders like [Customer Name] or "Account #1503 Customer".
 Use the EXACT full name and EXACT full account number from the bill_data provided.
-Sign the email with the real customer name. End with full account number in the signature.
+Sign the email with the real customer name. End with full account number in the signature.{line_context}
 Return ONLY a JSON object:
-{
+{{
   "subject": "email subject line",
   "body": "full email body with real account details",
   "key_arguments_used": ["list of main points made"],
   "ask_amount": 49.99,
   "reasoning": "why this approach for this round"
-}
+}}
 No preamble. JSON only.""",
         messages=[{"role": "user", "content": context}]
     )
@@ -220,10 +243,12 @@ Return ONLY a JSON object with these exact fields:
   "account_tenure": "2 years 3 months",
   "contract_end": "March 2025 or null",
   "account_number": "last 4 digits or null",
+  "line_count": 1,
   "services": ["list of services included"],
   "payment_history": "good/unknown",
   "key_details": "any other important details"
 }
+line_count: count the number of phone lines or service lines on this bill. For a single person internet/cable bill this is 1. For a wireless family plan count each phone number listed as a separate line.
 No preamble. No markdown. JSON only.""",
         messages=[{
             "role": "user",
