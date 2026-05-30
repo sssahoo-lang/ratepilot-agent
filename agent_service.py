@@ -1,6 +1,7 @@
 import anthropic
 import json
 import re
+import sys
 from typing import Optional
 
 client = anthropic.Anthropic(timeout=30.0)
@@ -72,6 +73,7 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
         "content": f"Research {provider} {bill_type}. Current bill ${current_amount}. line_count={line_count}.{account_context}"
     }]
     print(f"RESEARCH USER MESSAGE: {messages[0]['content'][:500]}")
+    sys.stdout.flush()
 
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
@@ -93,6 +95,7 @@ JSON only. No preamble.""",
         tools=[{"type": "web_search_20250305", "name": "web_search"}]
     )
     print(f"RESEARCH TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
+    sys.stdout.flush()
     text_blocks = []
     for block in response.content:
         if block.type == "text":
@@ -118,6 +121,7 @@ def build_strategy(bill_data: dict, research: dict) -> dict:
         }]
     )
     print(f"STRATEGY TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
+    sys.stdout.flush()
     return extract_json(response.content[0].text)
 
 
@@ -145,6 +149,7 @@ Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. 
         messages=[{"role": "user", "content": context}]
     )
     print(f"EMAIL TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
+    sys.stdout.flush()
     return extract_json(response.content[0].text)
 
 

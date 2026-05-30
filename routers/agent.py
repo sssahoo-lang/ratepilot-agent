@@ -33,6 +33,8 @@ async def update_status(db, nid, status, **kwargs):
     await db.commit()
 
 async def run_pipeline(bill_id, negotiation_id):
+    import sys
+    print("PIPELINE STARTED", flush=True)
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
