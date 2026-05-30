@@ -100,8 +100,8 @@ def build_strategy(bill_data: dict, research: dict) -> dict:
     """Use Claude to build a negotiation strategy."""
     response = client.messages.create(
         model=MODEL,
-        max_tokens=600,
-        system="""You are a negotiation strategist. Return ONLY this JSON:
+        max_tokens=400,
+        system="""Be extremely concise. You are a negotiation strategist. Return ONLY this JSON:
 {
   "opening_position": "what to ask for first",
   "key_arguments": ["argument 1", "argument 2", "argument 3"],
