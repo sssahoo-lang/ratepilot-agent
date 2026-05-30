@@ -1,4 +1,4 @@
-export const API = "https://billfight-agent-production.up.railway.app/api";
+export const API = import.meta.env.VITE_API_URL;
 
 export const STATUS_CONFIG = {
   starting: { label: "STARTING", color: "#71717a", bg: "rgba(113,113,122,0.12)" },
