@@ -70,7 +70,7 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
         model=MODEL,
-        max_tokens=800,
+        max_tokens=500,
         system="""You are a bill negotiation assistant. Search for current competitor pricing and return ONLY this JSON:
 {
   "competitor_prices": [
@@ -100,16 +100,14 @@ def build_strategy(bill_data: dict, research: dict) -> dict:
     """Use Claude to build a negotiation strategy."""
     response = client.messages.create(
         model=MODEL,
-        max_tokens=400,
-        system="""Be extremely concise. You are a negotiation strategist. Return ONLY this JSON:
+        max_tokens=300,
+        system="""Return ONLY valid JSON. No other text:
 {
-  "opening_position": "what to ask for first",
-  "key_arguments": ["argument 1", "argument 2", "argument 3"],
+  "opening_position": "string",
+  "key_arguments": ["string"],
   "target_price": 0.00,
-  "walkaway_threshold": 0.00,
-  "confidence": 0.8
-}
-JSON only. No preamble.""",
+  "walkaway_threshold": 0.00
+}""",
         messages=[{
             "role": "user",
             "content": f"Bill: {json.dumps(bill_data)}\nResearch: {json.dumps(research)}"
@@ -135,7 +133,7 @@ Round: {round_num}"""
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=800,
+        max_tokens=500,
         system=f"""You are a professional negotiator writing a bill negotiation email. Write a firm, polite email using the account details and research provided. Subject line first, then email body. Be concise.
 IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.{line_context}
 Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. No preamble.""",
