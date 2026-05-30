@@ -207,6 +207,86 @@ function PipelineBreakdown({ total, won, active, closed, totalSavings }) {
   );
 }
 
+function SavingsOverview({ negotiations }) {
+  if (negotiations.length === 0) {
+    return (
+      <section className="savings-overview">
+        <div className="page-header savings-overview-header">
+          <h2 style={{ fontSize: 16 }}>Savings Overview</h2>
+        </div>
+        <div className="savings-empty mono">No negotiations yet — upload a bill to start saving</div>
+      </section>
+    );
+  }
+
+  const wonNegotiations = negotiations.filter((n) => n.status === "won");
+  const monthlySavings = wonNegotiations.reduce((sum, n) => sum + (Number(n.savings_achieved) || 0), 0);
+  const annualSavings = monthlySavings * 12;
+  const winRate = negotiations.length > 0 ? (wonNegotiations.length / negotiations.length) * 100 : 0;
+  const winRateLabel = winRate.toFixed(0) + "%";
+  const avgSavings = wonNegotiations.length > 0 ? monthlySavings / wonNegotiations.length : null;
+  const sortedRows = [...negotiations].sort((a, b) => (Number(b.savings_achieved) || 0) - (Number(a.savings_achieved) || 0));
+  const fmtMoney = (n) => "$" + (Number(n) || 0).toFixed(0);
+
+  return (
+    <section className="savings-overview">
+      <div className="page-header savings-overview-header">
+        <h2 style={{ fontSize: 16 }}>Savings Overview</h2>
+      </div>
+      <div className="savings-grid">
+        <div className="savings-hero">
+          <p className="stat-label">Total savings</p>
+          <p className="savings-hero-value mono">{fmtMoney(monthlySavings)}</p>
+          <p className="savings-hero-label">saved per month</p>
+          <div className="savings-annual">
+            <span className="mono">{fmtMoney(annualSavings)}</span>
+            <small>projected annual savings</small>
+          </div>
+        </div>
+        <div className={"savings-mini-card " + (winRate >= 50 ? "positive" : "warning")}>
+          <p className="stat-label">Success Rate</p>
+          <p className="savings-mini-value mono">{wonNegotiations.length} / {negotiations.length}</p>
+          <p className="savings-mini-sub mono">{winRateLabel}</p>
+        </div>
+        <div className="savings-mini-card">
+          <p className="stat-label">Avg monthly savings per win</p>
+          <p className="savings-mini-value mono">{avgSavings == null ? "—" : fmtMoney(avgSavings)}</p>
+        </div>
+      </div>
+      <div className="savings-table-wrap">
+        <table className="savings-table">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Original Bill</th>
+              <th>Best Offer</th>
+              <th>Monthly Saved</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRows.map((n) => {
+              const savings = Number(n.savings_achieved) || 0;
+              const isActive = !["won", "closed_no_deal"].includes(n.status);
+              return (
+                <tr key={n.id}>
+                  <td>{n.provider || "Unknown"}</td>
+                  <td className="mono">{fmtMoney(n.current_amount)}</td>
+                  <td className="mono">{n.best_offer_received == null ? "—" : fmtMoney(n.best_offer_received)}</td>
+                  <td className={"mono " + (n.status === "won" ? "savings-positive" : isActive ? "savings-warning" : "savings-muted")}>
+                    {n.status === "won" ? "−" + fmtMoney(savings) : isActive ? "In Progress" : "—"}
+                  </td>
+                  <td><StatusBadge status={n.status} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function PageBackButton({ onClick, label }) {
   return (
     <button type="button" className="btn-back" onClick={onClick} aria-label={"Back to " + label}>
@@ -1277,6 +1357,7 @@ export default function App() {
             onClick={() => openFilteredList("all")}
           />
         </div>
+        <SavingsOverview negotiations={negotiations} />
         <PipelineBreakdown
           total={total}
           won={won}

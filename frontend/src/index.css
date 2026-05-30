@@ -527,6 +527,173 @@ body::after {
   color: var(--text-subtle);
 }
 
+/* Savings overview */
+.savings-overview {
+  margin-bottom: 28px;
+}
+
+.savings-overview-header {
+  margin-bottom: 10px;
+}
+
+.savings-overview-header h2 {
+  margin-bottom: 0;
+}
+
+.savings-empty {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  padding: 18px 20px;
+}
+
+.savings-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.6fr) repeat(2, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 900px) {
+  .savings-grid { grid-template-columns: 1fr; }
+}
+
+.savings-hero,
+.savings-mini-card,
+.savings-table-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+
+.savings-hero::before,
+.savings-mini-card::before,
+.savings-table-wrap::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+}
+
+.savings-hero {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.savings-hero-value {
+  margin: 0;
+  font-size: clamp(40px, 6vw, 68px);
+  line-height: 1;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.savings-hero-label {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.savings-annual {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: rgba(74, 222, 128, 0.07);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: var(--radius);
+}
+
+.savings-annual span {
+  color: var(--success);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.savings-annual small {
+  color: var(--text-subtle);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.savings-mini-card {
+  padding: 16px 18px;
+}
+
+.savings-mini-card.positive .savings-mini-value,
+.savings-mini-card.positive .savings-mini-sub {
+  color: var(--success);
+}
+
+.savings-mini-card.warning .savings-mini-value,
+.savings-mini-card.warning .savings-mini-sub {
+  color: var(--amber);
+}
+
+.savings-mini-value {
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.savings-mini-sub {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.savings-table-wrap {
+  overflow-x: auto;
+}
+
+.savings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.savings-table th,
+.savings-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.savings-table th {
+  color: var(--text-subtle);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.savings-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.savings-positive {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.savings-warning {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.savings-muted {
+  color: var(--text-subtle);
+}
+
 /* Pipeline breakdown */
 .pipeline-panel {
   background: var(--bg-surface);
