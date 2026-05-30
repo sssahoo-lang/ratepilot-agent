@@ -57,6 +57,7 @@ No preamble. No markdown. JSON only.""",
 
 def research_competitors(provider: str, bill_type: str, current_amount: float) -> dict:
     """Use Claude with web search to find competitor pricing."""
+    # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
         model=MODEL,
         max_tokens=2000,
@@ -79,13 +80,14 @@ No preamble. JSON only.""",
         messages=[{
             "role": "user",
             "content": f"Research competitors for: {provider} {bill_type} service. Current monthly bill: ${current_amount}. Find current competitor pricing and promotions."
-        }]
+        }],
+        tools=[{"type": "web_search_20250305", "name": "web_search"}]
     )
-    # Extract the final text response (after tool use)
-    for block in reversed(response.content):
+    text_blocks = []
+    for block in response.content:
         if block.type == "text":
-            return extract_json(block.text)
-    return {}
+            text_blocks.append(block.text)
+    return extract_json("\n".join(text_blocks)) if text_blocks else {}
 
 
 def build_strategy(bill_data: dict, research: dict) -> dict:
