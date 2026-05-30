@@ -100,7 +100,17 @@ async def simulate_reply(request: SimulateReplyRequest, background_tasks: Backgr
             await update_status(db, request.negotiation_id, "won", savings_achieved=savings, **common_kwargs)
             await add_step(db, request.negotiation_id, "closed", {"outcome": "won", "final_amount": offered}, "Accepted offer", "DEAL CLOSED")
         elif decision == 'counter':
-            counter = draft_negotiation_email({}, {}, strategy, round_num=len([s for s in steps if s['step_type'] == 'email_draft']) + 1, previous_response=request.reply_text)
+            async with db.execute("SELECT * FROM negotiations WHERE id = ?", (request.negotiation_id,)) as cursor:
+                full_neg = await cursor.fetchone()
+                if not full_neg: raise HTTPException(404, "Not found")
+                full_neg = dict(full_neg)
+            async with db.execute("SELECT * FROM bills WHERE id = ?", (full_neg["bill_id"],)) as cursor:
+                bill = await cursor.fetchone()
+                if not bill: raise HTTPException(404, "Bill not found")
+                bill = dict(bill)
+            bill_data = json.loads(bill.get('extracted_data') or '{}')
+            research = json.loads(full_neg.get('research_findings') or '{}')
+            counter = draft_negotiation_email(bill_data, research, strategy, round_num=len([s for s in steps if s['step_type'] == 'email_draft']) + 1, previous_response=request.reply_text)
             await add_step(db, request.negotiation_id, "email_draft", counter, "Counter-offer drafted", f"Counter: ${counter.get('ask_amount', 0):.2f}")
             await update_status(db, request.negotiation_id, "awaiting_reply", **common_kwargs)
         else:
