@@ -73,7 +73,7 @@ No preamble. No markdown. JSON only.""",
 
 
 def research_competitors(provider: str, bill_type: str, current_amount: float, line_count: int = 1) -> dict:
-    """Use Claude with web search to find competitor pricing."""
+    """Use Claude market knowledge to estimate competitor pricing."""
     line_count = int(line_count or 1)
     account_context = ""
     if line_count > 1:
@@ -89,24 +89,23 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
     print(f"RESEARCH USER MESSAGE: {messages[0]['content'][:500]}")
     sys.stdout.flush()
 
-    # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=500,
-        system="""You are a bill negotiation assistant. Search for current competitor pricing and return ONLY this JSON:
+        system="""You are a bill negotiation expert with deep knowledge of telecom and utility pricing. Based on your knowledge of current market rates, return ONLY this JSON:
 {
   "competitor_prices": [
     {"provider": "name", "price": 0.00, "plan": "description"}
   ],
   "market_average": 0.00,
-  "leverage_points": ["point 1", "point 2"],
+  "leverage_points": ["point 1", "point 2", "point 3"],
   "recommended_target": 0.00,
   "walkaway_threshold": 0.00,
+  "plan_context": "individual or family-X-lines",
   "research_summary": "one sentence summary"
 }
 JSON only. No preamble.""",
-        messages=messages,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}]
+        messages=messages
     )
     print(f"RESEARCH TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
     sys.stdout.flush()

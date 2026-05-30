@@ -9,7 +9,7 @@ BillFight helps people lower recurring bills by turning a bill upload into an au
 
 1. Upload — user uploads bill (PDF, TXT, or photo)
 2. Parse — Claude vision or text extraction reads the bill
-3. Research — live web search retrieves real competitor pricing
+3. Research — Claude estimates competitor pricing from built-in market knowledge
 4. Strategy — agent builds negotiation strategy with target price, walkaway threshold, and leverage points
 5. Draft — agent writes a personalized negotiation email
 6. Send — email sent directly to provider via Gmail
@@ -22,7 +22,7 @@ BillFight helps people lower recurring bills by turning a bill upload into an au
 | --- | --- |
 | Frontend | React 18, Vite, vanilla CSS |
 | Backend | Python, FastAPI, SQLite |
-| AI | Anthropic Claude API, web search tool use |
+| AI | Anthropic Claude API |
 | Email | Gmail API via OAuth |
 | Deploy | Railway (backend), Netlify (frontend) |
 
@@ -102,7 +102,7 @@ The frontend runs at `http://localhost:5173`. `frontend/.env.development` is inc
 ## Features
 
 - Autonomous multi-stage negotiation pipeline
-- Live competitor pricing via web search (not hallucinated)
+- Competitor pricing estimates using Claude market knowledge
 - PDF, TXT, and image bill upload with Claude vision
 - Real email sending to providers via Gmail API
 - Multi-turn negotiation with counter-offer context preserved
