@@ -30,10 +30,10 @@ function StatusBadge({ status }) {
 }
 
 function useToast() {
-  const [toast, setToast] = useState("");
-  const show = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2800);
+  const [toast, setToast] = useState(null);
+  const show = (msg, type = "info") => {
+    setToast({ message: msg, type });
+    setTimeout(() => setToast(null), 2800);
   };
   return { toast, show };
 }
@@ -264,7 +264,7 @@ function AppShell({ view, onNavigate, children, breadcrumbs, topbarExtra, totalS
   );
 }
 
-function StepCard({ step, onCopyEmail }) {
+function StepCard({ step, onCopyEmail, emailAction }) {
   const [expanded, setExpanded] = useState(false);
   const content = typeof step.content === "object" ? step.content : {};
 
@@ -300,6 +300,7 @@ function StepCard({ step, onCopyEmail }) {
             >
               Copy email
             </button>
+            {emailAction}
           </div>
         )}
         {step.step_type === "research" && content.competitor_prices?.slice(0, 3).map((c, i) => (
@@ -310,18 +311,24 @@ function StepCard({ step, onCopyEmail }) {
   );
 }
 
-function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete, showToast }) {
+function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete, onSendEmail, showToast }) {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("activity");
   const [restarting, setRestarting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [manualEmailPrompt, setManualEmailPrompt] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const steps = negotiation.steps || [];
   const savings = getMonthlySavings(negotiation);
   const lastEmail = steps.filter((s) => s.step_type === "email_draft").slice(-1)[0];
   const emailContent = lastEmail?.content && typeof lastEmail.content === "object" ? lastEmail.content : null;
+  const hasEmailSent = steps.some((s) => s.step_type === "email_sent");
+  const canSendEmail = ["awaiting_reply", "drafting"].includes(negotiation.status) && lastEmail && !hasEmailSent;
 
   const exportTranscript = () => {
     const blob = new Blob([JSON.stringify(negotiation, null, 2)], { type: "application/json" });
@@ -388,6 +395,33 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
     }
   };
 
+  const handleSendEmailClick = async (emailAddress) => {
+    if (!onSendEmail || emailSending) return;
+    setEmailSending(true);
+    setEmailError("");
+    const result = await onSendEmail(negotiation.id, negotiation.provider, emailAddress);
+    setEmailSending(false);
+    if (result?.needsEmail) {
+      setManualEmailPrompt(true);
+      return;
+    }
+    if (result?.sent) {
+      setManualEmailPrompt(false);
+      setManualEmail("");
+      return;
+    }
+    if (result?.error) setEmailError(result.error);
+  };
+
+  const handleManualEmailSubmit = (e) => {
+    e.preventDefault();
+    if (!manualEmail.trim()) {
+      setEmailError("Enter the provider email address");
+      return;
+    }
+    handleSendEmailClick(manualEmail);
+  };
+
   return (
     <>
       <div className="detail-layout">
@@ -452,6 +486,33 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                         navigator.clipboard.writeText(`Subject: ${c.subject}\n\n${c.body}`);
                         showToast("Email copied");
                       }}
+                      emailAction={canSendEmail && step.id === lastEmail?.id ? (
+                        <div className="email-send-panel">
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleSendEmailClick()}
+                            disabled={emailSending}
+                          >
+                            {emailSending ? "Sending..." : "Send Email"}
+                          </button>
+                          {manualEmailPrompt && (
+                            <form className="manual-email-form" onSubmit={handleManualEmailSubmit}>
+                              <input
+                                type="email"
+                                value={manualEmail}
+                                onChange={(e) => setManualEmail(e.target.value)}
+                                placeholder="provider@example.com"
+                                aria-label="Provider email address"
+                              />
+                              <button type="submit" className="btn btn-secondary btn-sm" disabled={emailSending}>
+                                Confirm
+                              </button>
+                            </form>
+                          )}
+                          {emailError && <p className="email-send-error">{emailError}</p>}
+                        </div>
+                      ) : null}
                     />
                   ))}
                 </div>
@@ -954,6 +1015,37 @@ export default function App() {
     setSelected(await r.json());
   }, []);
 
+  const handleSendEmail = useCallback(async (negotiationId, providerName, emailAddress = "") => {
+    try {
+      let to = emailAddress.trim();
+      if (!to) {
+        const lookup = await fetch(`${API}/email/provider-email/${encodeURIComponent(providerName || "")}`);
+        const lookupData = await lookup.json();
+        if (!lookup.ok) throw new Error(lookupData.detail || "Could not look up provider email");
+        if (!lookupData.found || !lookupData.email) {
+          return { needsEmail: true };
+        }
+        to = lookupData.email;
+      }
+
+      const response = await fetch(`${API}/email/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ negotiation_id: negotiationId, to }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to send email");
+
+      showToast(`Email sent to ${providerName}`, "success");
+      await fetchNegotiation(negotiationId);
+      return { sent: true, to };
+    } catch (err) {
+      const message = err.message || "Failed to send email";
+      showToast(message, "error");
+      return { error: message };
+    }
+  }, [fetchNegotiation, showToast]);
+
   const deleteNegotiation = useCallback(async (id) => {
     const r = await fetch(`${API}/negotiations/${id}`, { method: "DELETE" });
     if (!r.ok) throw new Error("Delete failed");
@@ -1100,6 +1192,7 @@ export default function App() {
         onRefresh={() => fetchNegotiation(selected.id)}
         onRestart={startFromBill}
         onDelete={deleteNegotiation}
+        onSendEmail={handleSendEmail}
         showToast={showToast}
       />
     );
@@ -1237,7 +1330,7 @@ export default function App() {
       >
         {content}
       </AppShell>
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
     </>
   );
 }
