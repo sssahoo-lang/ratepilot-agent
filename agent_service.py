@@ -64,35 +64,28 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
     if line_count > 1:
         account_context = (
             f"\nIMPORTANT: This is a {line_count}-LINE FAMILY/GROUP ACCOUNT. "
-            f"You MUST search for and compare {line_count}-line family plan pricing only. "
-            "Do NOT use single-line pricing — it is not comparable and will make the negotiation invalid. "
-            f"Search specifically for: '{provider} {line_count} lines price 2025' and competitor family plan pricing for {line_count} lines."
+            f"Compare {line_count}-line family plan pricing only. Do not use single-line pricing."
         )
 
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
     response = client.messages.create(
         model=MODEL,
-        max_tokens=2000,
-        system="""You are a market research expert helping consumers negotiate better prices.
-Search for current competitor pricing and promotions for the given provider and service type.
-After searching, return ONLY a JSON object:
+        max_tokens=800,
+        system="""You are a bill negotiation assistant. Search for current competitor pricing and return ONLY this JSON:
 {
   "competitor_prices": [
-    {"provider": "name", "price": 49.99, "plan": "description", "promo": "details or null"}
+    {"provider": "name", "price": 0.00, "plan": "description"}
   ],
-  "market_average": 65.00,
-  "current_promotions": ["list of active promos for the main provider if found"],
-  "price_trend": "rising/falling/stable",
-  "leverage_points": ["specific facts that give the customer negotiation leverage"],
-  "recommended_target": 55.00,
-  "walkaway_threshold": 75.00,
-  "plan_context": "family-6-lines or individual",
-  "research_summary": "2-3 sentence summary of findings"
+  "market_average": 0.00,
+  "leverage_points": ["point 1", "point 2"],
+  "recommended_target": 0.00,
+  "walkaway_threshold": 0.00,
+  "research_summary": "one sentence summary"
 }
-No preamble. JSON only.""",
+JSON only. No preamble.""",
         messages=[{
             "role": "user",
-            "content": f"Research competitors for: {provider} {bill_type} service. Current monthly bill: ${current_amount}. Find current competitor pricing and promotions.{account_context}"
+            "content": f"Research {provider} {bill_type}. Current bill ${current_amount}. line_count={line_count}.{account_context}"
         }],
         tools=[{"type": "web_search_20250305", "name": "web_search"}]
     )
@@ -107,30 +100,19 @@ def build_strategy(bill_data: dict, research: dict) -> dict:
     """Use Claude to build a negotiation strategy."""
     response = client.messages.create(
         model=MODEL,
-        max_tokens=1500,
-        system="""You are a master negotiator. Build a detailed negotiation strategy.
-Return ONLY a JSON object:
+        max_tokens=600,
+        system="""You are a negotiation strategist. Return ONLY this JSON:
 {
-  "opening_ask": 49.99,
-  "target_price": 55.00,
-  "walkaway_threshold": 75.00,
-  "primary_leverage": "the single strongest argument",
-  "leverage_points": ["ranked list of arguments to use"],
-  "tone": "firm/collaborative/urgent",
-  "key_phrases": ["specific phrases to include in the email"],
-  "anticipated_responses": [
-    {"response_type": "rejection", "counter_strategy": "what to do"},
-    {"response_type": "partial_offer", "counter_strategy": "what to do"},
-    {"response_type": "acceptance", "counter_strategy": "accept"}
-  ],
-  "strategy_summary": "2-3 sentence explanation of the approach"
+  "opening_position": "what to ask for first",
+  "key_arguments": ["argument 1", "argument 2", "argument 3"],
+  "target_price": 0.00,
+  "walkaway_threshold": 0.00,
+  "confidence": 0.8
 }
-No preamble. JSON only.""",
+JSON only. No preamble.""",
         messages=[{
             "role": "user",
-            "content": f"""Bill data: {json.dumps(bill_data)}
-Research findings: {json.dumps(research)}
-Build the optimal negotiation strategy."""
+            "content": f"Bill: {json.dumps(bill_data)}\nResearch: {json.dumps(research)}"
         }]
     )
     return extract_json(response.content[0].text)
@@ -142,10 +124,7 @@ def draft_negotiation_email(bill_data: dict, research: dict, strategy: dict, rou
     line_count = int(bill_data.get("line_count") or 1)
     line_context = ""
     if line_count > 1:
-        line_context = (
-            f"\nThis customer has {line_count} lines. Frame all competitor comparisons using {line_count}-line family plan pricing. "
-            f"Mention that switching {line_count} lines simultaneously, especially with active device installment plans, is a major disruption — use this as negotiation leverage."
-        )
+        line_context = f"\nUse {line_count}-line family plan comparisons only. Switching {line_count} lines is disruptive leverage."
     context = f"""Account number: {account_number}
 Bill data: {json.dumps(bill_data)}
 Research: {json.dumps(research)}
@@ -156,23 +135,10 @@ Round: {round_num}"""
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=1500,
-        system=f"""You are an expert negotiator drafting customer retention emails.
-Write professional, firm but polite emails that cite specific competitor prices.
-IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.
-IMPORTANT: Always include the customer's full account number, full name, and specific plan details from the bill data.
-Never use placeholders like [Customer Name] or "Account #1503 Customer".
-Use the EXACT full name and EXACT full account number from the bill_data provided.
-Sign the email with the real customer name. End with full account number in the signature.{line_context}
-Return ONLY a JSON object:
-{{
-  "subject": "email subject line",
-  "body": "full email body with real account details",
-  "key_arguments_used": ["list of main points made"],
-  "ask_amount": 49.99,
-  "reasoning": "why this approach for this round"
-}}
-No preamble. JSON only.""",
+        max_tokens=800,
+        system=f"""You are a professional negotiator writing a bill negotiation email. Write a firm, polite email using the account details and research provided. Subject line first, then email body. Be concise.
+IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.{line_context}
+Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. No preamble.""",
         messages=[{"role": "user", "content": context}]
     )
     return extract_json(response.content[0].text)
