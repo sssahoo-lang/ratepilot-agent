@@ -26,10 +26,12 @@ async def upload_bill(file: UploadFile = File(...)):
     content_type = file.content_type or ""
     filename = file.filename or ""
     extracted = None
+    raw_text = ""
 
     # Image upload — use Claude vision
     if content_type in SUPPORTED_IMAGE_TYPES or filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif')):
         media_type = SUPPORTED_IMAGE_TYPES.get(content_type, "image/jpeg")
+        raw_text = "Image upload - text extracted via vision"
         try:
             extracted = parse_bill_from_image(content, media_type)
         except Exception as e:
@@ -70,7 +72,7 @@ async def upload_bill(file: UploadFile = File(...)):
             extracted.get('account_tenure', 'Unknown'),
             extracted.get('contract_end'),
             extracted.get('bill_type', 'other'),
-            f"Image upload: {filename}" if content_type in SUPPORTED_IMAGE_TYPES else "",
+            raw_text,
             json.dumps(extracted)
         ))
         bill_id = cursor.lastrowid
