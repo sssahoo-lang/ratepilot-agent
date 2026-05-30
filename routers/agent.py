@@ -15,6 +15,9 @@ class SimulateReplyRequest(BaseModel):
     negotiation_id: int
     reply_text: str
 
+class RetryNegotiationRequest(BaseModel):
+    negotiation_id: int
+
 async def add_step(db, nid, stype, content, reasoning="", decision=""):
     await db.execute("INSERT INTO negotiation_steps (negotiation_id, step_type, content, reasoning, decision) VALUES (?, ?, ?, ?, ?)",
                      (nid, stype, json.dumps(content), reasoning, decision))
@@ -29,27 +32,33 @@ async def update_status(db, nid, status, **kwargs):
     await db.commit()
 
 async def run_pipeline(bill_id, negotiation_id):
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)) as cursor:
-            bill_row = await cursor.fetchone()
-            if not bill_row: return
-            bill = dict(bill_row)
-            bill_data = json.loads(bill['extracted_data']) if bill.get('extracted_data') else {}
-        await update_status(db, negotiation_id, "researching")
-        research = research_competitors(bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']))
-        if not research:
-            research = {"competitor_prices": [], "market_average": float(bill['current_amount']) * 0.8, "leverage_points": ["Long-term customer"], "recommended_target": float(bill['current_amount']) * 0.75, "walkaway_threshold": float(bill['current_amount']) * 0.9, "research_summary": "Market research completed."}
-        await add_step(db, negotiation_id, "research", research, "Searched competitor pricing", f"Market average: ${research.get('market_average', 0):.2f}")
-        await update_status(db, negotiation_id, "strategizing", research_findings=json.dumps(research))
-        strategy = build_strategy(bill_data, research)
-        if not strategy:
-            strategy = {"target_price": research.get('recommended_target', float(bill['current_amount']) * 0.8), "walkaway_threshold": float(bill['current_amount']) * 0.9, "primary_leverage": "Competitor pricing is lower", "strategy_summary": "Leverage competitor pricing."}
-        await add_step(db, negotiation_id, "strategy", strategy, "Built negotiation strategy", f"Target: ${strategy.get('target_price', 0):.2f}")
-        await update_status(db, negotiation_id, "drafting", target_price=strategy.get('target_price'), walkaway_threshold=strategy.get('walkaway_threshold'), strategy=json.dumps(strategy))
-        email_draft = draft_negotiation_email(bill_data, research, strategy, round_num=1)
-        await add_step(db, negotiation_id, "email_draft", email_draft, "Drafted negotiation email", f"Asking: ${email_draft.get('ask_amount', 0):.2f}/month")
-        await update_status(db, negotiation_id, "awaiting_reply")
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)) as cursor:
+                bill_row = await cursor.fetchone()
+                if not bill_row: return
+                bill = dict(bill_row)
+                bill_data = json.loads(bill['extracted_data']) if bill.get('extracted_data') else {}
+            await update_status(db, negotiation_id, "researching")
+            research = research_competitors(bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']))
+            if not research:
+                research = {"competitor_prices": [], "market_average": float(bill['current_amount']) * 0.8, "leverage_points": ["Long-term customer"], "recommended_target": float(bill['current_amount']) * 0.75, "walkaway_threshold": float(bill['current_amount']) * 0.9, "research_summary": "Market research completed."}
+            await add_step(db, negotiation_id, "research", research, "Searched competitor pricing", f"Market average: ${research.get('market_average', 0):.2f}")
+            await update_status(db, negotiation_id, "strategizing", research_findings=json.dumps(research))
+            strategy = build_strategy(bill_data, research)
+            if not strategy:
+                strategy = {"target_price": research.get('recommended_target', float(bill['current_amount']) * 0.8), "walkaway_threshold": float(bill['current_amount']) * 0.9, "primary_leverage": "Competitor pricing is lower", "strategy_summary": "Leverage competitor pricing."}
+            await add_step(db, negotiation_id, "strategy", strategy, "Built negotiation strategy", f"Target: ${strategy.get('target_price', 0):.2f}")
+            await update_status(db, negotiation_id, "drafting", target_price=strategy.get('target_price'), walkaway_threshold=strategy.get('walkaway_threshold'), strategy=json.dumps(strategy))
+            email_draft = draft_negotiation_email(bill_data, research, strategy, round_num=1)
+            await add_step(db, negotiation_id, "email_draft", email_draft, "Drafted negotiation email", f"Asking: ${email_draft.get('ask_amount', 0):.2f}/month")
+            await update_status(db, negotiation_id, "awaiting_reply")
+    except Exception as exc:
+        error = str(exc)
+        async with aiosqlite.connect(DB_PATH) as db:
+            await update_status(db, negotiation_id, "failed", error_message=error)
+            await add_step(db, negotiation_id, "error", {"error": error}, "Pipeline failed at this stage", "failed")
 
 @router.post("/start")
 async def start_negotiation(request: StartNegotiationRequest, background_tasks: BackgroundTasks):
@@ -61,6 +70,24 @@ async def start_negotiation(request: StartNegotiationRequest, background_tasks: 
         await db.commit()
     background_tasks.add_task(run_pipeline, request.bill_id, negotiation_id)
     return {"negotiation_id": negotiation_id, "status": "started"}
+
+@router.post("/retry")
+async def retry_negotiation(request: RetryNegotiationRequest, background_tasks: BackgroundTasks):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM negotiations WHERE id = ?", (request.negotiation_id,)) as cursor:
+            negotiation = await cursor.fetchone()
+            if not negotiation: raise HTTPException(404, "Not found")
+            negotiation = dict(negotiation)
+        if negotiation.get("status") != "failed":
+            raise HTTPException(400, "Only failed negotiations can be retried")
+        await db.execute(
+            "UPDATE negotiations SET status = 'starting', error_message = NULL, updated_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), request.negotiation_id),
+        )
+        await db.commit()
+    background_tasks.add_task(run_pipeline, negotiation["bill_id"], request.negotiation_id)
+    return {"negotiation_id": request.negotiation_id, "status": "restarted"}
 
 @router.post("/simulate-reply")
 async def simulate_reply(request: SimulateReplyRequest, background_tasks: BackgroundTasks):

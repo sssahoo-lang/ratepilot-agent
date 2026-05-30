@@ -36,6 +36,10 @@ async def init_db():
             await db.execute("ALTER TABLE negotiations ADD COLUMN rounds_count INTEGER DEFAULT 0")
         except Exception:
             pass
+        try:
+            await db.execute("ALTER TABLE negotiations ADD COLUMN error_message TEXT DEFAULT NULL")
+        except Exception:
+            pass
         await db.execute("""
             CREATE TABLE IF NOT EXISTS negotiation_steps (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

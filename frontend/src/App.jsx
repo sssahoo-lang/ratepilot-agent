@@ -391,13 +391,14 @@ function StepCard({ step, onCopyEmail, emailAction }) {
   );
 }
 
-function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete, onSendEmail, showToast }) {
+function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete, onRetry, onSendEmail, showToast }) {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("activity");
   const [restarting, setRestarting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [manualEmailPrompt, setManualEmailPrompt] = useState(false);
   const [manualEmail, setManualEmail] = useState("");
@@ -475,6 +476,18 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
     }
   };
 
+  const handleRetry = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry(negotiation.id);
+      showToast("Negotiation restarted", "success");
+    } catch (err) {
+      showToast(err.message || "Could not retry negotiation", "error");
+    }
+    setRetrying(false);
+  };
+
   const handleSendEmailClick = async (emailAddress) => {
     if (!onSendEmail || emailSending) return;
     setEmailSending(true);
@@ -522,6 +535,17 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
             <div className="detail-stat-row"><span>File</span><span>{negotiation.filename || "—"}</span></div>
           </div>
           <div className="detail-actions">
+            {negotiation.status === "failed" && negotiation.error_message && (
+              <div className="failure-panel">
+                <strong>Pipeline failed</strong>
+                <span>{negotiation.error_message}</span>
+              </div>
+            )}
+            {negotiation.status === "failed" && (
+              <button type="button" className="btn btn-secondary" onClick={handleRetry} disabled={retrying}>
+                {retrying ? "Retrying..." : "Retry Negotiation"}
+              </button>
+            )}
             <button type="button" className="btn btn-secondary" onClick={exportTranscript}>Export transcript</button>
             <button type="button" className="btn btn-secondary" onClick={copySummary}>Copy summary</button>
             {emailContent?.body && (
@@ -748,7 +772,7 @@ function UploadView({ onDone, showToast }) {
   );
 }
 
-function buildMenuItems(n, { onOpen, onRestart, onDelete, showToast }) {
+function buildMenuItems(n, { onOpen, onRestart, onRetry, onDelete, showToast }) {
   return [
     { label: "View details", onClick: () => onOpen(n.id) },
     {
@@ -773,6 +797,12 @@ function buildMenuItems(n, { onOpen, onRestart, onDelete, showToast }) {
           });
       },
     },
+    ...(n.status === "failed" ? [{
+      label: "Retry",
+      onClick: () => onRetry(n.id)
+        .then(() => showToast("Negotiation restarted", "success"))
+        .catch((err) => showToast(err.message || "Could not retry negotiation", "error")),
+    }] : []),
     ...(n.bill_id ? [{
       label: "Restart negotiation",
       onClick: () => onRestart(n.bill_id).then(() => showToast("Restarted")),
@@ -789,7 +819,7 @@ function buildMenuItems(n, { onOpen, onRestart, onDelete, showToast }) {
   ];
 }
 
-function NegotiationsTable({ negotiations, loading, filter, sort, search, onOpen, onRefresh, onFilterChange, onSortChange, showToast, onRestart, onDelete, compact }) {
+function NegotiationsTable({ negotiations, loading, filter, sort, search, onOpen, onRefresh, onFilterChange, onSortChange, showToast, onRestart, onRetry, onDelete, compact }) {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
 
@@ -930,7 +960,7 @@ function NegotiationsTable({ negotiations, loading, filter, sort, search, onOpen
         <ActionMenu
           anchorRect={menuAnchor}
           onClose={closeMenu}
-          items={buildMenuItems(menuNegotiation, { onOpen, onRestart, onDelete, showToast })}
+          items={buildMenuItems(menuNegotiation, { onOpen, onRestart, onRetry, onDelete, showToast })}
         />
       )}
     </>
@@ -1126,6 +1156,19 @@ export default function App() {
     }
   }, [fetchNegotiation, showToast]);
 
+  const retryNegotiation = useCallback(async (id) => {
+    const r = await fetch(`${API}/agent/retry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ negotiation_id: id }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Could not retry negotiation");
+    await fetchNegotiations();
+    await fetchNegotiation(id);
+    return data;
+  }, [fetchNegotiations, fetchNegotiation]);
+
   const deleteNegotiation = useCallback(async (id) => {
     const r = await fetch(`${API}/negotiations/${id}`, { method: "DELETE" });
     if (!r.ok) throw new Error("Delete failed");
@@ -1272,6 +1315,7 @@ export default function App() {
         onRefresh={() => fetchNegotiation(selected.id)}
         onRestart={startFromBill}
         onDelete={deleteNegotiation}
+        onRetry={retryNegotiation}
         onSendEmail={handleSendEmail}
         showToast={showToast}
       />
@@ -1306,6 +1350,7 @@ export default function App() {
           onSortChange={setSort}
           showToast={showToast}
           onRestart={startFromBill}
+          onRetry={retryNegotiation}
           onDelete={deleteNegotiation}
         />
       </>
@@ -1380,6 +1425,7 @@ export default function App() {
           onSortChange={setSort}
           showToast={showToast}
           onRestart={startFromBill}
+          onRetry={retryNegotiation}
           onDelete={deleteNegotiation}
           compact
         />

@@ -8,6 +8,7 @@ export const STATUS_CONFIG = {
   awaiting_reply: { label: "AWAITING", color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
   won: { label: "WON", color: "#4ade80", bg: "rgba(74,222,128,0.1)" },
   closed_no_deal: { label: "CLOSED", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
+  failed: { label: "Failed", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
 };
 
 export const FILTER_TABS = [
