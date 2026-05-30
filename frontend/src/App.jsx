@@ -666,6 +666,31 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
   );
 }
 
+const ACCEPTED_UPLOAD_TYPES = new Set([
+  "application/pdf",
+  "text/plain",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+function formatFileSize(size) {
+  if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + " MB";
+  return Math.max(1, Math.round(size / 1024)) + " KB";
+}
+
+function getFileKind(file) {
+  const name = file?.name?.toLowerCase() || "";
+  if (file?.type?.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/.test(name)) return "Image";
+  if (file?.type === "application/pdf" || name.endsWith(".pdf")) return "PDF";
+  return "Text";
+}
+
+function isAcceptedBillFile(file) {
+  const name = file?.name?.toLowerCase() || "";
+  return ACCEPTED_UPLOAD_TYPES.has(file?.type) || /\.(pdf|txt|jpg|jpeg|png|webp)$/.test(name);
+}
+
 function UploadView({ onDone, showToast }) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -673,14 +698,52 @@ function UploadView({ onDone, showToast }) {
   const [extracted, setExtracted] = useState(null);
   const [billId, setBillId] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
 
-  const handleFile = async (file) => {
+  useEffect(() => {
+    if (!selectedFile || getFileKind(selectedFile) !== "Image") {
+      setPreviewUrl("");
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
+
+  const selectFile = (file) => {
     if (!file) return;
-    setUploading(true);
-    setStatus("Parsing bill…");
+    if (!isAcceptedBillFile(file)) {
+      setStatus("Error: Supported formats are PDF, TXT, JPG, PNG, and WEBP");
+      return;
+    }
+    setSelectedFile(file);
+    setStatus("");
     setExtracted(null);
+    setBillId(null);
+  };
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl("");
+    setStatus("");
+    setExtracted(null);
+    setBillId(null);
+    const input = document.getElementById("file-input");
+    if (input) input.value = "";
+  };
+
+  const uploadSelectedFile = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+    setStatus("Uploading bill...");
+    setExtracted(null);
+    const timers = [
+      setTimeout(() => setStatus("Reading bill contents..."), 1500),
+      setTimeout(() => setStatus("Extracting details with AI..."), 3000),
+    ];
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", selectedFile);
     try {
       const r = await fetch(`${API}/bills/upload`, { method: "POST", body: form });
       const data = await r.json();
@@ -695,6 +758,7 @@ function UploadView({ onDone, showToast }) {
     } catch {
       setStatus("Backend unavailable");
     }
+    timers.forEach(clearTimeout);
     setUploading(false);
   };
 
@@ -714,6 +778,8 @@ function UploadView({ onDone, showToast }) {
     setStarting(false);
   };
 
+  const fileKind = selectedFile ? getFileKind(selectedFile) : "";
+
   return (
     <div className="upload-grid">
       <div>
@@ -721,16 +787,31 @@ function UploadView({ onDone, showToast }) {
           className={`dropzone ${dragging ? "dragging" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); selectFile(e.dataTransfer.files[0]); }}
           onClick={() => document.getElementById("file-input")?.click()}
           role="button"
           tabIndex={0}
         >
           <div className="dropzone-icon" aria-hidden />
-          <p className="dropzone-title">Drop bill PDF or TXT</p>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>AI extracts provider, amount, and terms</p>
-          <input id="file-input" type="file" accept=".pdf,.txt" hidden onChange={(e) => handleFile(e.target.files[0])} />
+          <p className="dropzone-title">Drop your bill here or click to browse</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>PDF, TXT, JPG, PNG, and WEBP supported</p>
+          <input id="file-input" type="file" accept=".pdf,.txt,.jpg,.jpeg,.png,.webp" hidden onChange={(e) => selectFile(e.target.files[0])} />
         </div>
+        {selectedFile && (
+          <div className="file-preview-card">
+            {previewUrl ? <img src={previewUrl} alt="Selected bill preview" /> : <div className="file-preview-icon mono">{fileKind}</div>}
+            <div className="file-preview-meta">
+              <strong>{selectedFile.name}</strong>
+              <span>{formatFileSize(selectedFile.size)} · {fileKind}</span>
+            </div>
+            <button type="button" className="file-preview-remove" onClick={clearSelectedFile} aria-label="Remove selected file">×</button>
+          </div>
+        )}
+        {selectedFile && !extracted && (
+          <button type="button" className="btn btn-primary upload-submit" onClick={uploadSelectedFile} disabled={uploading}>
+            {uploading ? "Uploading..." : "Upload bill"}
+          </button>
+        )}
         {status && (
           <p style={{ marginTop: 12, fontSize: 13, color: status.includes("Error") || status.includes("Failed") ? "var(--rose)" : "var(--text-muted)" }}>
             {uploading ? "⏳ " : ""}{status}
@@ -755,10 +836,10 @@ function UploadView({ onDone, showToast }) {
       <div className="upload-tips">
         <h4>Supported bills</h4>
         <ul>
-          <li>Internet & cable (Comcast, Spectrum, etc.)</li>
-          <li>Mobile phone plans</li>
-          <li>Insurance premiums</li>
-          <li>Streaming & subscriptions</li>
+          <li>PDF bills (most providers)</li>
+          <li>TXT plain text exports</li>
+          <li>Photos of paper bills (JPG, PNG, WEBP)</li>
+          <li>You can photograph a paper bill and upload the image</li>
         </ul>
         <h4 style={{ marginTop: 16 }}>What happens next</h4>
         <ul>
