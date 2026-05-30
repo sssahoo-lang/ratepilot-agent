@@ -7,6 +7,20 @@ from typing import Optional
 client = anthropic.Anthropic(timeout=30.0)
 MODEL = "claude-sonnet-4-20250514"
 
+def call_with_retry(fn, *args, **kwargs):
+    import time
+    for attempt in range(5):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            if "rate_limit" in str(e).lower():
+                wait = 60 * (attempt + 1)
+                print(f"Rate limited, waiting {wait}s", flush=True)
+                time.sleep(wait)
+                continue
+            raise
+    raise Exception("Max retries exceeded")
+
 
 def extract_json(text: str) -> dict:
     """Robustly extract JSON from Claude's response."""
@@ -76,7 +90,7 @@ def research_competitors(provider: str, bill_type: str, current_amount: float, l
     sys.stdout.flush()
 
     # LIVE WEB SEARCH - retrieves real-time competitor pricing
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=500,
         system="""You are a bill negotiation assistant. Search for current competitor pricing and return ONLY this JSON:
@@ -105,7 +119,7 @@ JSON only. No preamble.""",
 
 def build_strategy(bill_data: dict, research: dict) -> dict:
     """Use Claude to build a negotiation strategy."""
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=300,
         system="""Return ONLY valid JSON. No other text:
@@ -140,7 +154,7 @@ Round: {round_num}"""
     if previous_response:
         context += f"\nTheir previous response: {previous_response}"
 
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=500,
         system=f"""You are a professional negotiator writing a bill negotiation email. Write a firm, polite email using the account details and research provided. Subject line first, then email body. Be concise.
