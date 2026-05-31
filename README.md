@@ -86,50 +86,15 @@ billfight-agent/
 ```
 
 ---
+# BillFight
 
-## Local Setup
+> An autonomous AI agent that negotiates your monthly bills...
 
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/sssahoo-lang/billfight-agent.git
-cd billfight-agent
-```
-
-### 2. Backend setup
-
-```bash
-pip install -r requirements.txt
-```
-
-Create a `.env` file in the project root:
-
-```
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-SEED_DEMO_DATA=false
-```
-
-Run the backend:
-
-```bash
-python main.py
-```
-
-Backend runs at `http://localhost:8000`
-
-### 3. Frontend setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs at `http://localhost:5173`
-
-The `frontend/.env.development` file already points to `http://localhost:8000/api` — no additional config needed.
+**Live Demo:** https://meek-tartufo-0c3f73.netlify.app
 
 ---
+
+
 
 ## Environment Variables
 
