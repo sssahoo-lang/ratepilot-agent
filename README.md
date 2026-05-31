@@ -18,7 +18,7 @@ The pipeline runs autonomously across eight stages:
 
 1. **Upload** — User uploads a bill as PDF, TXT, or photo (JPG/PNG/WEBP)
 2. **Parse** — Extracts provider, amount, account number, and line count using regex and Claude vision for images
-3. **Research** — Agent analyzes competitor pricing using Claude's market knowledge, tailored to account type (individual vs. family/multi-line)
+3. **Research** — Agent analyzes competitor pricing using market knowledge, tailored to account type (individual vs. family/multi-line)
 4. **Strategy** — Builds a negotiation plan with opening position, key arguments, target price, and walkaway threshold
 5. **Draft** — Generates a personalized negotiation email grounded in real account details and market data
 6. **Send** — Email sent directly to the provider via Gmail API *(optional — requires Gmail OAuth setup)*
