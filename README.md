@@ -1,4 +1,4 @@
-# RatePilot — Autonomous Bill Negotiation Agent*
+# RatePilot — Autonomous Bill Negotiation Agent
 
 > An autonomous AI agent that negotiates your monthly bills — researches competitor pricing, builds a data-driven strategy, and drafts personalized negotiation emails, all without human input.
 
