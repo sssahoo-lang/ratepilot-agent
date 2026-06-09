@@ -1,4 +1,4 @@
-# BillFight
+# RatePilot — Autonomous Bill Negotiation Agent****
 
 > An autonomous AI agent that negotiates your monthly bills — researches competitor pricing, builds a data-driven strategy, and drafts personalized negotiation emails, all without human input.
 
@@ -6,7 +6,7 @@
 
 ## What It Does
 
-Most people overpay on recurring bills simply because negotiating is time-consuming and awkward. BillFight automates the entire process.
+Most people overpay on recurring bills simply because negotiating is time-consuming and awkward. RatePilot automates the entire process.
 
 Upload a bill — internet, wireless, cable, or any recurring service — and the agent independently analyzes the market, identifies leverage points, and produces a ready-to-send negotiation email backed by real competitor data. When the provider replies, paste their response and the agent decides whether to accept, counter, or escalate. Every decision is logged with reasoning, and all outcomes are tracked on a savings dashboard.
 
@@ -59,7 +59,7 @@ The pipeline runs autonomously across eight stages:
 ## Project Structure
 
 ```
-billfight-agent/
+RatePilot-agent/
 ├── main.py                  # FastAPI app entrypoint
 ├── agent_service.py         # Claude API — research, strategy, email draft
 ├── database.py              # SQLite schema and migrations
@@ -86,7 +86,7 @@ billfight-agent/
 ```
 
 ---
-# BillFight
+# RatePilot
 
 > An autonomous AI agent that negotiates your monthly bills...
 
