@@ -143,6 +143,9 @@ async def simulate_reply(request: SimulateReplyRequest, background_tasks: Backgr
             counter = draft_negotiation_email(bill_data, research, strategy, round_num=len([s for s in steps if s['step_type'] == 'email_draft']) + 1, previous_response=request.reply_text)
             await add_step(db, request.negotiation_id, "email_draft", counter, "Counter-offer drafted", f"Counter: ${counter.get('ask_amount', 0):.2f}")
             await update_status(db, request.negotiation_id, "awaiting_reply", **common_kwargs)
+        elif decision == 'escalate':
+            await update_status(db, request.negotiation_id, "escalated", **common_kwargs)
+            await add_step(db, request.negotiation_id, "escalated", {"outcome": "escalated"}, interpretation.get('decision_reasoning', 'Needs human review'), "ESCALATED")
         else:
             await update_status(db, request.negotiation_id, "closed_no_deal", **common_kwargs)
             await add_step(db, request.negotiation_id, "closed", {"outcome": "no_deal"}, "Ended without deal", "CLOSED")

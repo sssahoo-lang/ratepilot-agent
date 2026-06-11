@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap");
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -30,6 +30,7 @@
   --blue-dim: #1e3a5f;
 
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --font-serif: "Fraunces", Georgia, serif;
   --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
   --sidebar-w: 220px;
   --topbar-h: 52px;
@@ -55,13 +56,28 @@
 }
 
 [data-theme="light"] {
-  --bg-base: #f8f8fc;
+  /* Brand — warm brass/bronze for a "private banking" feel */
+  --brand: #9c7a3c;
+  --brand-light: #b8923f;
+  --brand-dim: #f6efe1;
+
+  --bg-base: #faf6ee;
   --bg-surface: #ffffff;
-  --bg-elevated: #f0f0f8;
-  --bg-border: #e2e2ee;
-  --text-primary: #0f0f1a;
-  --text-secondary: #5a5a72;
-  --text-muted: #9090a8;
+  --bg-elevated: #f5ecd9;
+  --bg-border: #e8e1d3;
+  --text-primary: #2e2a24;
+  --text-secondary: #6b6357;
+  --text-muted: #8a8275;
+
+  /* Status colors — muted, legible on cream/white */
+  --green: #2f6b4d;
+  --green-dim: #e6f0ea;
+  --yellow: #9a6b1f;
+  --yellow-dim: #f7ecd9;
+  --red: #b3463a;
+  --red-dim: #f9e8e5;
+  --blue: #4a6fa5;
+  --blue-dim: #eaf0f8;
 
   --bg-app: var(--bg-base);
   --bg-sidebar: var(--bg-surface);
@@ -72,7 +88,12 @@
   --border-light: var(--bg-border);
   --text: var(--text-primary);
   --text-subtle: var(--text-muted);
+  --accent: var(--brand);
   --accent-dim: color-mix(in srgb, var(--brand) 10%, transparent);
+  --accent-border: var(--brand-light);
+  --success: var(--green);
+  --amber: var(--yellow);
+  --rose: var(--red);
 }
 
 body {
@@ -154,10 +175,10 @@ body::after {
 
 .sidebar-brand h1 {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .sidebar-brand span {
@@ -241,8 +262,9 @@ body::after {
 }
 
 .sidebar-stat-value {
-  font-size: 20px;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
   color: var(--success);
   margin: 0;
 }
@@ -1824,9 +1846,10 @@ button[style*="--red"]:hover,
 
 .page-header h2 {
   color: var(--text-primary);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .page-header p { color: var(--text-secondary); }
@@ -1905,9 +1928,10 @@ button[style*="--red"]:hover,
 }
 
 .savings-hero-value {
-  color: var(--brand-light);
+  color: var(--brand);
+  font-family: var(--font-serif);
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .savings-annual span {
@@ -1993,40 +2017,19 @@ button[style*="--red"]:hover,
 .status-closed_no_deal { color: var(--red); background: var(--red-dim); }
 
 .detail-layout {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 480px;
-  height: 100vh;
-  z-index: 9000;
-  display: flex;
-  background: var(--bg-surface);
-  border-left: 1px solid var(--bg-border);
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.38);
-  animation: detailSlideIn 180ms ease;
-}
-
-@keyframes detailSlideIn {
-  from { transform: translateX(24px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .detail-sidebar {
-  width: 100%;
-  border-right: 0;
-  border-bottom: 1px solid var(--bg-border);
   background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
   padding: 20px;
-  overflow-y: auto;
 }
 
 .detail-main {
-  position: absolute;
-  inset: 260px 0 0;
-  overflow-y: auto;
-  padding: 18px 20px;
-  border-top: 1px solid var(--bg-border);
   background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
 }
 
 .detail-sidebar h3 {

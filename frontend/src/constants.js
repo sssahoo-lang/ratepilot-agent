@@ -8,6 +8,7 @@ export const STATUS_CONFIG = {
   awaiting_reply: { label: "AWAITING", color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
   won: { label: "WON", color: "#4ade80", bg: "rgba(74,222,128,0.1)" },
   closed_no_deal: { label: "CLOSED", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
+  escalated: { label: "ESCALATED", color: "#fb923c", bg: "rgba(251,146,60,0.1)" },
   failed: { label: "Failed", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
 };
 
@@ -55,14 +56,20 @@ export const STEP_CODES = {
   research: "RSH",
   strategy: "STR",
   email_draft: "EML",
+  email_sent: "SNT",
   reply_received: "RPL",
+  escalated: "ESC",
   closed: "CLS",
+  error: "ERR",
 };
 
 export const STEP_LABELS = {
   research: "Market Research",
   strategy: "Strategy Built",
   email_draft: "Email Drafted",
+  email_sent: "Email Sent",
   reply_received: "Reply Analyzed",
+  escalated: "Escalated for Review",
   closed: "Negotiation Closed",
+  error: "Pipeline Error",
 };

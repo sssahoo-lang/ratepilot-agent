@@ -4,7 +4,7 @@ import json
 import io
 import re
 from database import DB_PATH
-from agent_service import MODEL, client, extract_json, parse_bill_from_image
+from agent_service import MODEL, client, extract_json, parse_bill_from_image, call_with_retry
 import pypdf
 
 router = APIRouter()
@@ -81,7 +81,7 @@ def extract_bill_fields_cheap(text: str) -> dict:
     }
 
 def parse_bill_minimal(text: str) -> dict:
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=300,
         system="""You are a bill parsing expert. Extract only the most important fields.

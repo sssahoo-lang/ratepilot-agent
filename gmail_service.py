@@ -34,8 +34,8 @@ def get_gmail_service():
     return build('gmail', 'v1', credentials=creds)
 
 
-def send_email(to: str, subject: str, body: str) -> str:
-    """Send an email and return the message ID."""
+def send_email(to: str, subject: str, body: str) -> dict:
+    """Send an email and return its message ID and thread ID."""
     service = get_gmail_service()
     message = MIMEMultipart()
     message['to'] = to
@@ -45,7 +45,20 @@ def send_email(to: str, subject: str, body: str) -> str:
     sent = service.users().messages().send(
         userId='me', body={'raw': raw}
     ).execute()
-    return sent['id']
+    return {'id': sent['id'], 'threadId': sent['threadId']}
+
+
+def _extract_text_from_payload(payload: dict) -> str:
+    """Recursively search a message payload for the first text/plain part."""
+    if payload.get('mimeType') == 'text/plain':
+        data = payload.get('body', {}).get('data', '')
+        if data:
+            return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+    for part in payload.get('parts', []):
+        text = _extract_text_from_payload(part)
+        if text:
+            return text
+    return ''
 
 
 def get_replies(thread_id: str) -> list:
@@ -56,18 +69,7 @@ def get_replies(thread_id: str) -> list:
     ).execute()
     messages = []
     for msg in thread.get('messages', [])[1:]:  # skip first (our sent email)
-        payload = msg['payload']
-        body = ''
-        if 'parts' in payload:
-            for part in payload['parts']:
-                if part['mimeType'] == 'text/plain':
-                    data = part['body'].get('data', '')
-                    body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-                    break
-        elif payload['body'].get('data'):
-            body = base64.urlsafe_b64decode(
-                payload['body']['data']
-            ).decode('utf-8', errors='ignore')
+        body = _extract_text_from_payload(msg['payload'])
         if body:
             messages.append({
                 'id': msg['id'],

@@ -618,7 +618,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
     if (!onSendEmail || emailSending) return;
     setEmailSending(true);
     setEmailError("");
-    const result = await onSendEmail(negotiation.id, negotiation.provider, emailAddress);
+    const result = await onSendEmail(negotiation.id, negotiation.provider, emailAddress, emailContent);
     setEmailSending(false);
     if (result?.needsEmail) {
       setManualEmailPrompt(true);
@@ -724,7 +724,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                             onClick={() => handleSendEmailClick()}
                             disabled={emailSending}
                           >
-                            {emailSending ? "Sending..." : "Send Email"}
+                            {emailSending ? "Opening Gmail..." : "Send Email via Gmail"}
                           </button>
                           {manualEmailPrompt && (
                             <form className="manual-email-form" onSubmit={handleManualEmailSubmit}>
@@ -746,7 +746,7 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
                     />
                   ))}
                 </div>
-                {["won","closed_no_deal","awaiting_reply"].includes(negotiation.status) && (
+                {["won","closed_no_deal","awaiting_reply","escalated"].includes(negotiation.status) && (
                   <NegotiationOutcomeCard negotiation={negotiation} />
                 )}
               </>
@@ -798,6 +798,7 @@ const ACCEPTED_UPLOAD_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/gif",
 ]);
 
 function formatFileSize(size) {
@@ -807,14 +808,14 @@ function formatFileSize(size) {
 
 function getFileKind(file) {
   const name = file?.name?.toLowerCase() || "";
-  if (file?.type?.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/.test(name)) return "Image";
+  if (file?.type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/.test(name)) return "Image";
   if (file?.type === "application/pdf" || name.endsWith(".pdf")) return "PDF";
   return "Text";
 }
 
 function isAcceptedBillFile(file) {
   const name = file?.name?.toLowerCase() || "";
-  return ACCEPTED_UPLOAD_TYPES.has(file?.type) || /\.(pdf|txt|jpg|jpeg|png|webp)$/.test(name);
+  return ACCEPTED_UPLOAD_TYPES.has(file?.type) || /\.(pdf|txt|jpg|jpeg|png|webp|gif)$/.test(name);
 }
 
 function UploadView({ onDone, showToast }) {
@@ -840,7 +841,7 @@ function UploadView({ onDone, showToast }) {
   const selectFile = (file) => {
     if (!file) return;
     if (!isAcceptedBillFile(file)) {
-      setStatus("Error: Supported formats are PDF, TXT, JPG, PNG, and WEBP");
+      setStatus("Error: Supported formats are PDF, TXT, JPG, PNG, WEBP, and GIF");
       return;
     }
     setSelectedFile(file);
@@ -920,8 +921,8 @@ function UploadView({ onDone, showToast }) {
         >
           <div className="dropzone-icon" aria-hidden />
           <p className="dropzone-title">Drop your bill here or click to browse</p>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>PDF, TXT, JPG, PNG, and WEBP supported</p>
-          <input id="file-input" type="file" accept=".pdf,.txt,.jpg,.jpeg,.png,.webp" hidden onChange={(e) => selectFile(e.target.files[0])} />
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>PDF, TXT, JPG, PNG, WEBP, and GIF supported</p>
+          <input id="file-input" type="file" accept=".pdf,.txt,.jpg,.jpeg,.png,.webp,.gif" hidden onChange={(e) => selectFile(e.target.files[0])} />
         </div>
         {selectedFile && (
           <div className="file-preview-card">
@@ -964,7 +965,7 @@ function UploadView({ onDone, showToast }) {
         <ul>
           <li>PDF bills (most providers)</li>
           <li>TXT plain text exports</li>
-          <li>Photos of paper bills (JPG, PNG, WEBP)</li>
+          <li>Photos of paper bills (JPG, PNG, WEBP, GIF)</li>
           <li>You can photograph a paper bill and upload the image</li>
         </ul>
         <h4 style={{ marginTop: 16 }}>What happens next</h4>
@@ -1237,6 +1238,7 @@ function NegotiationOutcomeCard({ negotiation }) {
     won: { label: "Deal accepted", dot: "var(--green)" },
     closed_no_deal: { label: "Closed — no deal", dot: "var(--red)" },
     awaiting_reply: { label: "Offer pending", dot: "var(--yellow)" },
+    escalated: { label: "Escalated for review", dot: "var(--orange, #fb923c)" },
   };
   const sc = statusMap[negotiation.status] || { label: negotiation.status, dot: "var(--text-muted)" };
   const fmt = (n) => n != null ? "$" + Math.round(n).toLocaleString() : "—";
@@ -1303,7 +1305,7 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("newest");
   const [search, setSearch] = useState("");
-  const [theme, setTheme] = useState(() => localStorage.getItem("ratepilot-theme") || "dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("ratepilot-theme") || "light");
   const [autoRefresh, setAutoRefresh] = useState(() => localStorage.getItem("ratepilot-autorefresh") !== "false");
   const { toast, show: showToast } = useToast();
 
@@ -1332,7 +1334,7 @@ export default function App() {
     setSelected(await r.json());
   }, []);
 
-  const handleSendEmail = useCallback(async (negotiationId, providerName, emailAddress = "") => {
+  const handleSendEmail = useCallback(async (negotiationId, providerName, emailAddress = "", emailContent = null) => {
     try {
       let to = emailAddress.trim();
       if (!to) {
@@ -1345,19 +1347,24 @@ export default function App() {
         to = lookupData.email;
       }
 
-      const response = await fetch(`${API}/email/send`, {
+      const subject = emailContent?.subject || "Regarding my account";
+      const body = emailContent?.body || "";
+      const composeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(composeUrl, "_blank", "noopener,noreferrer");
+
+      const response = await fetch(`${API}/email/mark-sent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ negotiation_id: negotiationId, to }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Failed to send email");
+      if (!response.ok) throw new Error(data.detail || "Failed to record email");
 
-      showToast(`Email sent to ${providerName}`, "success");
+      showToast(`Gmail opened — review and hit send to ${providerName}`, "success");
       await fetchNegotiation(negotiationId);
       return { sent: true, to };
     } catch (err) {
-      const message = err.message || "Failed to send email";
+      const message = err.message || "Failed to open email";
       showToast(message, "error");
       return { error: message };
     }
@@ -1412,15 +1419,25 @@ export default function App() {
     }
   }, [selected, fetchNegotiation, autoRefresh]);
 
-  const total = negotiations.length;
-  const totalSavings = negotiations.reduce((a, n) => a + Math.max(getMonthlySavings(n), getBestOfferSavings(n)), 0);
-  const won = negotiations.filter((n) => n.status === "won").length;
-  const active = negotiations.filter((n) => !["won", "closed_no_deal"].includes(n.status)).length;
-  const closed = negotiations.filter((n) => n.status === "closed_no_deal").length;
+  const dedupedNegotiations = useMemo(() => {
+    const byBill = new Map();
+    for (const n of negotiations) {
+      const key = n.bill_id ?? `n-${n.id}`;
+      const existing = byBill.get(key);
+      if (!existing || n.id > existing.id) byBill.set(key, n);
+    }
+    return [...byBill.values()].sort((a, b) => b.id - a.id);
+  }, [negotiations]);
+
+  const total = dedupedNegotiations.length;
+  const totalSavings = dedupedNegotiations.reduce((a, n) => a + Math.max(getMonthlySavings(n), getBestOfferSavings(n)), 0);
+  const won = dedupedNegotiations.filter((n) => n.status === "won").length;
+  const active = dedupedNegotiations.filter((n) => !["won", "closed_no_deal"].includes(n.status)).length;
+  const closed = dedupedNegotiations.filter((n) => n.status === "closed_no_deal").length;
   const wonPct = pctOf(won, total);
   const activePct = pctOf(active, total);
   const savingsPctOfBill = (() => {
-    const wonDeals = negotiations.filter((n) => n.status === "won");
+    const wonDeals = dedupedNegotiations.filter((n) => n.status === "won");
     if (wonDeals.length === 0) return 0;
     let totalOriginal = 0;
     let totalSaved = 0;
@@ -1546,7 +1563,7 @@ export default function App() {
           <p>{pageMeta.subtitle}</p>
         </div>
         <NegotiationsTable
-          negotiations={negotiations}
+          negotiations={dedupedNegotiations}
           loading={loading}
           filter={filter}
           sort={sort}
@@ -1609,7 +1626,7 @@ export default function App() {
             onClick={() => openFilteredList("all")}
           />
         </div>
-        <SavingsOverview negotiations={negotiations} />
+        <SavingsOverview negotiations={dedupedNegotiations} />
         <PipelineBreakdown
           total={total}
           won={won}
@@ -1621,7 +1638,7 @@ export default function App() {
           <h2 style={{ fontSize: 16 }}>Recent negotiations</h2>
         </div>
         <NegotiationsTable
-          negotiations={negotiations.slice(0, 5)}
+          negotiations={dedupedNegotiations.slice(0, 5)}
           loading={loading}
           filter="all"
           sort={sort}
@@ -1636,9 +1653,9 @@ export default function App() {
           onDelete={deleteNegotiation}
           compact
         />
-        {negotiations.length > 5 && (
+        {dedupedNegotiations.length > 5 && (
           <button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => navigate("negotiations")}>
-            View all {negotiations.length} negotiations →
+            View all {dedupedNegotiations.length} negotiations →
           </button>
         )}
       </>

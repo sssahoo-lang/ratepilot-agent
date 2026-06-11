@@ -14,7 +14,14 @@ def call_with_retry(fn, *args, **kwargs):
             return fn(*args, **kwargs)
         except Exception as e:
             if "rate_limit" in str(e).lower():
-                wait = 60 * (attempt + 1)
+                wait = 20
+                response = getattr(e, "response", None)
+                retry_after = response.headers.get("retry-after") if response is not None else None
+                if retry_after:
+                    try:
+                        wait = float(retry_after) + 1
+                    except ValueError:
+                        pass
                 print(f"Rate limited, waiting {wait}s", flush=True)
                 time.sleep(wait)
                 continue
@@ -48,7 +55,7 @@ def extract_json(text: str) -> dict:
 
 def parse_bill(raw_text: str) -> dict:
     """Use Claude to extract structured data from bill text."""
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=1000,
         system="""You are a bill parsing expert. Extract structured data from bill text.
@@ -168,7 +175,7 @@ Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. 
 
 def interpret_response(response_text: str, strategy: dict, history: list) -> dict:
     """Use Claude to interpret a company's response and decide next action."""
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=1000,
         system="""You are a negotiation expert analyzing a company's response.
@@ -198,7 +205,7 @@ Analyze and decide next action."""
 
 def generate_final_summary(bill_data: dict, steps: list, outcome: str, savings: float) -> str:
     """Generate a human-readable summary of the negotiation."""
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=800,
         system="You are a concise writer. Summarize negotiation outcomes in 3-4 sentences. Be specific about what was achieved and why the strategy worked or didn't.",
@@ -219,7 +226,7 @@ def parse_bill_from_image(image_bytes: bytes, media_type: str) -> dict:
     """Use Claude vision to extract bill data from an image."""
     import base64
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
-    response = client.messages.create(
+    response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=1000,
         system="""You are a bill parsing expert. Extract structured data from bill images.

@@ -9,3 +9,4 @@ frontend/dist/
 *.egg-info/
 credentials.json
 gmail_token.json
+.claude/
