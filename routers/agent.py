@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
-import aiosqlite, json
+import aiosqlite, asyncio, json
 from datetime import datetime
 from database import DB_PATH
 from agent_service import research_competitors, build_strategy, draft_negotiation_email, interpret_response, generate_final_summary
@@ -44,17 +44,17 @@ async def run_pipeline(bill_id, negotiation_id):
                 bill_data = json.loads(bill.get('extracted_data') or '{}')
                 line_count = int(bill_data.get("line_count") or 1)
             await update_status(db, negotiation_id, "researching")
-            research = research_competitors(bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']), line_count=line_count)
+            research = await asyncio.to_thread(research_competitors, bill_data.get('provider', bill['provider']), bill_data.get('bill_type', bill['bill_type']), float(bill['current_amount']), line_count=line_count)
             if not research:
                 research = {"competitor_prices": [], "market_average": float(bill['current_amount']) * 0.8, "leverage_points": ["Long-term customer"], "recommended_target": float(bill['current_amount']) * 0.75, "walkaway_threshold": float(bill['current_amount']) * 0.9, "research_summary": "Market research completed."}
             await add_step(db, negotiation_id, "research", research, "Searched competitor pricing", f"Market average: ${research.get('market_average', 0):.2f}")
             await update_status(db, negotiation_id, "strategizing", research_findings=json.dumps(research))
-            strategy = build_strategy(bill_data, research)
+            strategy = await asyncio.to_thread(build_strategy, bill_data, research)
             if not strategy:
                 strategy = {"target_price": research.get('recommended_target', float(bill['current_amount']) * 0.8), "walkaway_threshold": float(bill['current_amount']) * 0.9, "primary_leverage": "Competitor pricing is lower", "strategy_summary": "Leverage competitor pricing."}
             await add_step(db, negotiation_id, "strategy", strategy, "Built negotiation strategy", f"Target: ${strategy.get('target_price', 0):.2f}")
             await update_status(db, negotiation_id, "drafting", target_price=strategy.get('target_price'), walkaway_threshold=strategy.get('walkaway_threshold'), strategy=json.dumps(strategy))
-            email_draft = draft_negotiation_email(bill_data, research, strategy, round_num=1)
+            email_draft = await asyncio.to_thread(draft_negotiation_email, bill_data, research, strategy, round_num=1)
             await add_step(db, negotiation_id, "email_draft", email_draft, "Drafted negotiation email", f"Asking: ${email_draft.get('ask_amount', 0):.2f}/month")
             await update_status(db, negotiation_id, "awaiting_reply")
     except Exception as exc:
@@ -106,7 +106,7 @@ async def simulate_reply(request: SimulateReplyRequest, background_tasks: Backgr
         strategy = json.loads(neg.get('strategy') or '{}')
         async with db.execute("SELECT * FROM negotiation_steps WHERE negotiation_id = ? ORDER BY created_at", (request.negotiation_id,)) as cursor:
             steps = [dict(r) for r in await cursor.fetchall()]
-        interpretation = interpret_response(request.reply_text, strategy, [{"type": s['step_type'], "content": s['content'][:200]} for s in steps])
+        interpretation = await asyncio.to_thread(interpret_response, request.reply_text, strategy, [{"type": s['step_type'], "content": s['content'][:200]} for s in steps])
         await add_step(db, request.negotiation_id, "reply_received", {"reply": request.reply_text, "interpretation": interpretation}, interpretation.get('decision_reasoning', ''), interpretation.get('decision', ''))
         decision = interpretation.get('decision', 'close')
         offered = interpretation.get('offered_amount') or 0
@@ -140,7 +140,7 @@ async def simulate_reply(request: SimulateReplyRequest, background_tasks: Backgr
                 bill = dict(bill)
             bill_data = json.loads(bill.get('extracted_data') or '{}')
             research = json.loads(full_neg.get('research_findings') or '{}')
-            counter = draft_negotiation_email(bill_data, research, strategy, round_num=len([s for s in steps if s['step_type'] == 'email_draft']) + 1, previous_response=request.reply_text)
+            counter = await asyncio.to_thread(draft_negotiation_email, bill_data, research, strategy, round_num=len([s for s in steps if s['step_type'] == 'email_draft']) + 1, previous_response=request.reply_text)
             await add_step(db, request.negotiation_id, "email_draft", counter, "Counter-offer drafted", f"Counter: ${counter.get('ask_amount', 0):.2f}")
             await update_status(db, request.negotiation_id, "awaiting_reply", **common_kwargs)
         elif decision == 'escalate':

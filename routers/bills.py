@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 import aiosqlite
+import asyncio
 import json
 import io
 import re
@@ -133,7 +134,7 @@ async def upload_bill(file: UploadFile = File(...)):
         media_type = SUPPORTED_IMAGE_TYPES.get(content_type, "image/jpeg")
         raw_text = "Image upload - text extracted via vision"
         try:
-            extracted = parse_bill_from_image(content, media_type)
+            extracted = await asyncio.to_thread(parse_bill_from_image, content, media_type)
         except Exception as e:
             raise HTTPException(400, f"Could not read image: {str(e)}")
 
@@ -145,7 +146,7 @@ async def upload_bill(file: UploadFile = File(...)):
                 raise HTTPException(400, "Could not extract text from PDF")
             # Truncate to avoid token rate limits
             parse_text = raw_text[:3000]
-            extracted = parse_text_bill_smart(raw_text, parse_text)
+            extracted = await asyncio.to_thread(parse_text_bill_smart, raw_text, parse_text)
         except HTTPException:
             raise
         except Exception as e:
@@ -154,7 +155,7 @@ async def upload_bill(file: UploadFile = File(...)):
     # Text upload
     elif filename.lower().endswith('.txt') or 'text' in content_type:
         raw_text = content.decode('utf-8')
-        extracted = parse_text_bill_smart(raw_text)
+        extracted = await asyncio.to_thread(parse_text_bill_smart, raw_text)
 
     else:
         raise HTTPException(400, "Supported formats: JPG, PNG, WEBP, PDF, TXT")
