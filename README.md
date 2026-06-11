@@ -1,15 +1,11 @@
 [RATEPILOT_README copy.md](https://github.com/user-attachments/files/28856075/RATEPILOT_README.copy.md)
 # RatePilot — Autonomous Bill Negotiation Agent
 
-![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![Claude API](https://img.shields.io/badge/AI-Claude%20API-D97757)
-![Status](https://img.shields.io/badge/status-active-success)
+
 
 > An autonomous AI agent that negotiates your monthly bills — researches competitor pricing, builds a data-driven strategy, and drafts personalized negotiation emails, all without human input.
 
-**Live Demo:** [meek-tartufo-0c3f73.netlify.app](https://meek-tartufo-0c3f73.netlify.app)
+**Live Demo:** https://ratepilott.netlify.app/
 
 <!-- TODO: add a screenshot or short GIF of the dashboard here, e.g.: -->
 <!-- ![RatePilot dashboard](docs/screenshot-dashboard.png) -->
