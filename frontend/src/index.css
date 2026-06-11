@@ -3,31 +3,31 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-  /* Brand */
-  --brand: #6366f1;
-  --brand-light: #818cf8;
-  --brand-dim: #312e81;
+  /* Brand — espresso & brass "old money" accent */
+  --brand: #c9a35e;
+  --brand-light: #d9bc85;
+  --brand-dim: #3a3324;
 
   /* Backgrounds */
-  --bg-base: #0f0f13;
-  --bg-surface: #18181f;
-  --bg-elevated: #1f1f2a;
-  --bg-border: #2a2a38;
+  --bg-base: #16140f;
+  --bg-surface: #1c1914;
+  --bg-elevated: #221f18;
+  --bg-border: #34301f;
 
   /* Text */
-  --text-primary: #f0f0f5;
-  --text-secondary: #9090a8;
-  --text-muted: #5a5a72;
+  --text-primary: #f3ede1;
+  --text-secondary: #a39a87;
+  --text-muted: #756c5c;
 
   /* Status colors */
-  --green: #22c55e;
-  --green-dim: #14532d;
-  --yellow: #eab308;
-  --yellow-dim: #713f12;
-  --red: #ef4444;
-  --red-dim: #7f1d1d;
-  --blue: #3b82f6;
-  --blue-dim: #1e3a5f;
+  --green: #6fae8a;
+  --green-dim: #20302a;
+  --yellow: #d4a857;
+  --yellow-dim: #3a3020;
+  --red: #c4756a;
+  --red-dim: #3a2420;
+  --blue: #7a9bc4;
+  --blue-dim: #20283a;
 
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
@@ -53,6 +53,7 @@
   --success: var(--green);
   --amber: var(--yellow);
   --rose: var(--red);
+  --btn-primary-text: var(--bg-base);
 }
 
 [data-theme="light"] {
@@ -94,6 +95,7 @@
   --success: var(--green);
   --amber: var(--yellow);
   --rose: var(--red);
+  --btn-primary-text: #ffffff;
 }
 
 body {
@@ -1807,7 +1809,7 @@ select:focus-visible,
 
 .btn-primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--btn-primary-text);
   border-color: var(--brand);
 }
 
