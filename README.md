@@ -18,15 +18,19 @@ Upload a bill (PDF, photo, or text), and the agent independently researches the 
 
 ### Operations Dashboard
 ![Operations dashboard](docs/dashboard.png)
-*Real-time pipeline metrics: $42/mo in active savings, win rate, deal volume, and per-provider breakdown.*
+*Real-time pipeline metrics: savings tracking, win rate, deal volume, and per-provider breakdown.*
 
-### Negotiations Pipeline
-![Negotiations list](docs/negotiations_list.png)
-*AT&T Wireless: agent negotiated the bill from $292.38/mo down to $250/mo — a $42/month reduction — across two autonomous rounds.*
+### Autonomous Agent Pipeline
+![Pipeline detail](docs/pipeline.png)
+*The agent runs market research, builds a negotiation strategy, and drafts a personalized email — each step logged with reasoning and timestamps.*
 
-### Bill Upload
-![Upload page](docs/upload.png)
-*Upload a bill as PDF, photo, or text file. The agent handles parsing, research, strategy, and drafting automatically.*
+### Agent Handles the Counter-Offer
+![Counter-offer](docs/counter.png)
+*AT&T replied with $280/mo. The agent analyzed the response, rejected the offer as insufficient (still 31% above market), and drafted a counter holding firm at $210/mo.*
+
+### Final Outcome — 2 Rounds, 14% Reduction
+![Outcome](docs/outcome.png)
+*After two autonomous rounds: AT&T came down to $250/mo — saving $504/year.*
 
 ---
 
