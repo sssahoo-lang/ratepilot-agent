@@ -18,19 +18,15 @@ Upload a bill (PDF, photo, or text), and the agent independently researches the 
 
 ### Operations Dashboard
 ![Operations dashboard](docs/dashboard.png)
-*Real-time pipeline metrics: savings tracking, win rate, deal volume, and per-provider breakdown.*
+*Real-time pipeline metrics: $42/mo in active savings, win rate, deal volume, and per-provider breakdown.*
 
-### Autonomous Negotiation Pipeline
-![Pipeline detail view](docs/pipeline.png)
-*The agent runs three sequential Claude calls — market research, strategy, and email draft — each logged with reasoning and timestamps.*
+### Negotiations Pipeline
+![Negotiations list](docs/negotiations_list.png)
+*AT&T Wireless: agent negotiated the bill from $292.38/mo down to $250/mo — a $42/month reduction — across two autonomous rounds.*
 
-### Email Drafted and Sent via Gmail API
-![Email in Gmail](docs/gmail.png)
-*The drafted email is pre-populated in Gmail with the correct provider address and account number — ready to send in one click.*
-
-### Multi-Round Outcome
-![Negotiation outcome](docs/outcome.png)
-*After two rounds: AT&T moved from $292/mo to $250/mo — a 14% reduction and $504/year in savings.*
+### Bill Upload
+![Upload page](docs/upload.png)
+*Upload a bill as PDF, photo, or text file. The agent handles parsing, research, strategy, and drafting automatically.*
 
 ---
 
