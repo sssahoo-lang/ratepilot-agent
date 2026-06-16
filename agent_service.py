@@ -162,10 +162,10 @@ Round: {round_num}"""
 
     response = call_with_retry(client.messages.create,
         model=MODEL,
-        max_tokens=500,
+        max_tokens=1500,
         system=f"""You are a professional negotiator writing a bill negotiation email. Write a firm, polite email using the account details and research provided. Subject line first, then email body. Be concise.
 IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.{line_context}
-Return ONLY JSON with subject, body, key_arguments_used, ask_amount, reasoning. No preamble.""",
+Return ONLY a valid JSON object with keys: subject, body, key_arguments_used, ask_amount, reasoning. No preamble, no markdown fences.""",
         messages=[{"role": "user", "content": context}]
     )
     print(f"EMAIL TOKENS - input: {response.usage.input_tokens}, output: {response.usage.output_tokens}")
