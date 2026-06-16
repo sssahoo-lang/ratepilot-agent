@@ -1,56 +1,72 @@
-[RATEPILOT_README copy.md](https://github.com/user-attachments/files/28856075/RATEPILOT_README.copy.md)
 # RatePilot — Autonomous Bill Negotiation Agent
 
+> An AI agent that autonomously negotiates recurring bills — researches competitor pricing, builds a data-driven strategy, drafts personalized negotiation emails, and adapts based on provider responses across multiple rounds.
 
-
-> An autonomous AI agent that negotiates your monthly bills — researches competitor pricing, builds a data-driven strategy, and drafts personalized negotiation emails, all without human input.
-
-**Live Demo:** https://ratepilott.netlify.app/
-
-<!-- TODO: add a screenshot or short GIF of the dashboard here, e.g.: -->
-<!-- ![RatePilot dashboard](docs/screenshot-dashboard.png) -->
+**Live demo:** [ratepilott.netlify.app](https://ratepilott.netlify.app) · **Repo:** [sssahoo-lang/ratepilot-agent](https://github.com/sssahoo-lang/ratepilot-agent)
 
 ---
 
 ## What It Does
 
-Most people overpay on recurring bills simply because negotiating is time-consuming and awkward. RatePilot automates the entire process.
+Most people overpay on recurring bills because negotiating is time-consuming and awkward. RatePilot removes the human from the loop entirely.
 
-Upload a bill — internet, wireless, cable, or any recurring service — and the agent independently analyzes the market, identifies leverage points, and produces a ready-to-send negotiation email backed by real competitor data. When the provider replies, paste their response and the agent decides whether to accept, counter, or escalate. Every decision is logged with reasoning, and all outcomes are tracked on a savings dashboard.
+Upload a bill (PDF, photo, or text), and the agent independently researches the market, identifies leverage points, and writes a ready-to-send negotiation email grounded in real competitor data. When the provider replies, paste their response and the agent decides whether to accept, counter, or escalate — preserving full context across every round.
+
+---
+
+## Screenshots
+
+### Operations Dashboard
+![Operations dashboard](docs/dashboard.png)
+*Real-time pipeline metrics: savings tracking, win rate, deal volume, and per-provider breakdown.*
+
+### Autonomous Negotiation Pipeline
+![Pipeline detail view](docs/pipeline.png)
+*The agent runs three sequential Claude calls — market research, strategy, and email draft — each logged with reasoning and timestamps.*
+
+### Email Drafted and Sent via Gmail API
+![Email in Gmail](docs/gmail.png)
+*The drafted email is pre-populated in Gmail with the correct provider address and account number — ready to send in one click.*
+
+### Multi-Round Outcome
+![Negotiation outcome](docs/outcome.png)
+*After two rounds: AT&T moved from $292/mo to $250/mo — a 14% reduction and $504/year in savings.*
 
 ---
 
 ## How the Agent Works
 
-The pipeline runs autonomously across eight stages:
+The pipeline runs autonomously in eight stages:
 
-1. **Upload** — User uploads a bill as PDF, TXT, or photo (JPG/PNG/WEBP)
-2. **Parse** — Extracts provider, amount, account number, and line count using regex and Claude vision for images
-3. **Research** — Agent analyzes competitor pricing using market knowledge, tailored to account type (individual vs. family/multi-line)
-4. **Strategy** — Builds a negotiation plan with opening position, key arguments, target price, and walkaway threshold
-5. **Draft** — Generates a personalized negotiation email grounded in real account details and market data
-6. **Send** — Email sent directly to the provider via Gmail API *(optional — requires Gmail OAuth setup)*
-7. **Classify** — Agent reads the provider's reply and autonomously decides: accept, counter, or escalate
-8. **Track** — Outcome logged, savings dashboard updated with monthly and annual savings
+| Stage | What happens |
+|---|---|
+| Upload | Bill received as PDF, TXT, or photo (JPG/PNG/WEBP/GIF) |
+| Parse | Regex extracts provider/amount; Claude vision handles photos |
+| Research | Agent finds competitor pricing, tailored to account type (individual vs. family multi-line) |
+| Strategy | Builds opening position, target price, walkaway threshold, and key arguments |
+| Draft | Writes a personalized negotiation email grounded in real account data |
+| Send | Email delivered to the provider via Gmail API (optional) |
+| Classify | Agent reads the provider reply and decides: accept / counter / escalate |
+| Track | Outcome logged; savings dashboard updated with monthly and annual projections |
 
 ---
 
-## Architecture
+## Engineering Highlights
 
-```
-┌──────────────┐        ┌────────────────────────────────────┐        ┌──────────────┐
-│  React UI    │◄──────►│           FastAPI Backend           │◄──────►│   SQLite DB   │
-│  (Vite)      │  REST  │                                      │        └──────────────┘
-└──────────────┘        │  ┌────────────┐    ┌─────────────┐  │
-                         │  │ Agent       │    │ Bill Parser │  │
-                         │  │ Pipeline    │    │ (PDF/Image) │  │
-                         │  │ (Claude API)│    └─────────────┘  │
-                         │  └─────┬──────┘                      │
-                         └────────┼──────────────────┬──────────┘
-                                  ▼                  ▼
-                          Competitor pricing    Gmail API
-                          research & strategy   (send / check replies)
-```
+**Async pipeline without blocking the event loop**
+All Claude API calls are synchronous (Anthropic SDK). Running them directly inside `async def` handlers blocked FastAPI's single asyncio event loop, freezing concurrent requests and making the UI appear unresponsive. Fixed by wrapping every blocking call with `asyncio.to_thread()`, moving them off the event loop into a thread-pool executor.
+
+**Multi-turn negotiation with full context**
+Counter-offers aren't fresh prompts — each round passes the original bill data, the competitor research, the established strategy, and the provider's reply to Claude. This lets the agent hold a consistent position across rounds rather than drifting.
+
+**Smart bill parsing with fallback chain**
+PDF/TXT bills first go through a fast regex extractor (provider name, total due, account number, line count). Only if that fails does the pipeline escalate to a Claude call — minimizing API usage for well-structured bills. Photos always route through Claude vision.
+
+**Multi-line family plan awareness**
+The agent detects the number of lines on a wireless bill and explicitly compares against family plan pricing only — not single-line rates. "Switching 9 lines is disruptive" is used as leverage in the email.
+
+**Production deployment on Railway**
+Railway assigns a dynamic `$PORT` at runtime. The app was initially hardcoded to port 8000, causing 502 errors despite successful builds. Fixed `main.py` to read `os.environ.get("PORT", 8000)` and disabled `reload=True` in production.
 
 ---
 
@@ -58,12 +74,39 @@ The pipeline runs autonomously across eight stages:
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite, vanilla CSS |
-| Backend | Python 3.13, FastAPI, SQLite |
-| AI | Anthropic Claude API, multi-stage agentic pipeline |
+| Frontend | React 18, Vite, vanilla CSS (custom design system) |
+| Backend | Python 3.11, FastAPI, SQLite via aiosqlite |
+| AI | Anthropic Claude API (`claude-sonnet-4-5`) — multi-stage agentic pipeline |
 | Email | Gmail API via OAuth 2.0 |
 | Export | jsPDF — client-side PDF generation |
 | Deploy | Railway (backend), Netlify (frontend) |
+
+---
+
+## Project Structure
+
+```
+ratepilot-agent/
+├── main.py                  # FastAPI entrypoint — binds to $PORT for Railway
+├── agent_service.py         # Claude API calls — research, strategy, email, classify
+├── database.py              # SQLite schema and async migrations
+├── gmail_service.py         # Gmail OAuth send/reply helpers
+├── provider_emails.py       # Provider retention email address lookup
+├── requirements.txt
+├── routers/
+│   ├── agent.py             # Pipeline orchestration — /api/agent/*
+│   ├── bills.py             # Bill upload and parsing — /api/bills/*
+│   ├── negotiations.py      # Negotiation CRUD — /api/negotiations/*
+│   └── email_router.py      # Email send/check — /api/email/*
+└── frontend/
+    ├── src/
+    │   ├── App.jsx           # All views and state (upload → pipeline → detail → outcome)
+    │   ├── index.css         # Design system — CSS custom properties, light/dark themes
+    │   ├── constants.js      # API base URL, status config, step labels
+    │   └── utils/savings.js  # Savings computation helpers
+    ├── .env.development      # VITE_API_URL → localhost:8000
+    └── .env.production       # VITE_API_URL → Railway backend
+```
 
 ---
 
@@ -76,9 +119,7 @@ git clone https://github.com/sssahoo-lang/ratepilot-agent.git
 cd ratepilot-agent
 pip install -r requirements.txt
 
-# Add your Claude API key
-echo "ANTHROPIC_API_KEY=your_key_here" > .env
-
+export ANTHROPIC_API_KEY=your_key_here
 uvicorn main:app --reload
 ```
 
@@ -88,76 +129,10 @@ uvicorn main:app --reload
 cd frontend
 npm install
 npm run dev
+# App at http://localhost:5173 · API at http://localhost:8000
 ```
 
-The app will be available at `http://localhost:5173`, with the API at `http://localhost:8000`.
-
-> Gmail sending is optional — see [Environment Variables](#environment-variables) below. Without it, the app runs fully and negotiation emails are displayed for manual copying.
-
----
-
-## Features
-
-- **Autonomous multi-stage negotiation pipeline** — research → strategy → draft → classify → escalate
-- **Multi-line family plan support** — detects line count and compares correct family plan pricing
-- **PDF, TXT, and image bill upload** — Claude vision handles photographed paper bills
-- **Real email sending** to providers via Gmail API
-- **Multi-turn negotiation loop** — counter-offers preserve full bill context across rounds
-- **Confidence scoring** — every agent decision includes a confidence score and reasoning
-- **Full audit trail** — every pipeline step logged with reasoning and decision
-- **Savings dashboard** — win rate, total saved, annual projection, per-provider breakdown
-- **PDF export** — one-click negotiation summary with full timeline, strategy, and outcome
-- **Failed pipeline recovery** — automatic error detection, error message display, retry button
-- **Dark / light theme toggle**
-
----
-
-## Project Structure
-
-```
-RatePilot-agent/
-├── main.py                  # FastAPI app entrypoint
-├── agent_service.py         # Claude API — research, strategy, email draft
-├── database.py              # SQLite schema and migrations
-├── gmail_service.py         # Gmail OAuth send/reply helpers
-├── provider_emails.py       # Provider customer service email lookup
-├── requirements.txt
-├── seed_data.py             # Demo data (disabled by default)
-├── routers/
-│   ├── agent.py             # Pipeline orchestration — /api/agent
-│   ├── bills.py             # Bill upload and parsing — /api/bills
-│   ├── negotiations.py      # Negotiation CRUD — /api/negotiations
-│   └── email_router.py      # Email send/check — /api/email
-└── frontend/
-    ├── src/
-    │   ├── App.jsx           # Main React app — all views and state
-    │   ├── index.css         # Design system — dark SaaS theme
-    │   ├── constants.js      # API base URL (env-based)
-    │   ├── utils/savings.js  # Savings computation helpers
-    │   └── components/
-    │       └── Logo.jsx      # Brand, nav icons, sidebar
-    ├── .env.development      # Points to localhost:8000
-    ├── .env.production       # Points to Railway backend
-    └── vite.config.js
-```
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key for the full agent pipeline |
-| `SEED_DEMO_DATA` | No | Set to `true` to seed demo negotiations on startup |
-
-### Gmail Email Sending *(optional)*
-
-Email sending requires Gmail OAuth credentials. Place these files in the project root:
-
-- `credentials.json` — from Google Cloud Console (OAuth 2.0 Desktop app)
-- `gmail_token.json` — generated on first run via browser OAuth flow
-
-Without these files the app runs fully — email sending is skipped and the negotiation email is displayed for manual copying.
+Gmail sending is optional — without OAuth credentials the app runs fully and negotiation emails are shown for manual copying.
 
 ---
 
@@ -165,25 +140,36 @@ Without these files the app runs fully — email sending is skipped and the nego
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/bills/upload` | Upload bill (PDF, TXT, JPG, PNG, WEBP) |
+| `POST` | `/api/bills/upload` | Upload bill (PDF, TXT, JPG, PNG, WEBP, GIF) |
 | `GET` | `/api/bills/{id}` | Get parsed bill data |
 | `POST` | `/api/agent/start` | Start negotiation pipeline |
 | `POST` | `/api/agent/simulate-reply` | Submit provider reply for classification |
 | `POST` | `/api/agent/retry` | Retry a failed negotiation |
 | `GET` | `/api/negotiations/` | List all negotiations |
-| `GET` | `/api/negotiations/{id}` | Get full negotiation with steps |
+| `GET` | `/api/negotiations/{id}` | Get negotiation with full step history |
 | `DELETE` | `/api/negotiations/{id}` | Delete a negotiation |
 | `POST` | `/api/email/send` | Send negotiation email via Gmail |
-| `POST` | `/api/email/check-reply` | Check Gmail for provider reply |
+| `POST` | `/api/email/check-reply` | Poll Gmail for provider reply |
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | Claude API key |
+| `SEED_DEMO_DATA` | No | Set `true` to seed sample negotiations on startup |
+
+Gmail OAuth credentials (`credentials.json` + `gmail_token.json`) are optional — see [Gmail OAuth setup](https://developers.google.com/gmail/api/quickstart/python).
 
 ---
 
 ## Known Limitations
 
-- **Gmail OAuth requires local setup** — the interactive browser flow does not work in server production without additional configuration
-- **SQLite resets on Railway redeploy** — without a persistent volume, negotiation history is lost on each deployment
-- **No user authentication** — all negotiations are visible to anyone with the URL; designed as a single-user tool
-- **Free tier API limits** — Anthropic free tier (10K tokens/minute) may slow the pipeline on large multi-page bills; upgrading to Tier 1 ($5) resolves this
+- **Gmail OAuth requires local setup** — the interactive browser flow doesn't work in a server environment without additional configuration
+- **SQLite resets on Railway redeploy** — without a persistent volume, negotiation history is cleared on each deployment
+- **No authentication** — designed as a single-user tool; all negotiations are visible to anyone with the URL
+- **Rate limits** — Anthropic free tier (10K tokens/min) may slow the pipeline on large multi-page bills
 
 ---
 
@@ -191,15 +177,14 @@ Without these files the app runs fully — email sending is skipped and the nego
 
 - [ ] PostgreSQL for persistent production storage
 - [ ] JWT authentication and multi-user support
-- [ ] Live web search integration for real-time competitor pricing
+- [ ] Live web search for real-time competitor pricing
 - [ ] Celery + Redis for async task queue
-- [ ] Chrome extension for in-browser bill detection
-- [ ] Provider reply auto-detection via Gmail polling
+- [ ] Auto-detect replies via Gmail polling
 
 ---
 
 ## Author
 
-**Sriya Smita Sahoo**
-MS Computer Science — Indiana University Bloomington
+**Sriya Smita Sahoo** — MS Computer Science, Indiana University Bloomington
+
 [linkedin.com/in/sriya-smita-sahoo](https://linkedin.com/in/sriya-smita-sahoo) · [github.com/sssahoo-lang](https://github.com/sssahoo-lang)
