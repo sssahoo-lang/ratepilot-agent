@@ -5,7 +5,7 @@ import sys
 from typing import Optional
 
 client = anthropic.Anthropic(timeout=30.0)
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-5"
 
 def call_with_retry(fn, *args, **kwargs):
     import time
