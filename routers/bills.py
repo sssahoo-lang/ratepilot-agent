@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 import aiosqlite
 import asyncio
 import json
@@ -166,8 +166,9 @@ async def upload_bill(file: UploadFile = File(...)):
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute("""
             INSERT INTO bills (filename, provider, current_amount, account_tenure,
-                             contract_end, bill_type, raw_text, extracted_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                             contract_end, bill_type, raw_text, extracted_data,
+                             file_data, file_mimetype)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             filename,
             extracted.get('provider', 'Unknown'),
@@ -176,7 +177,9 @@ async def upload_bill(file: UploadFile = File(...)):
             extracted.get('contract_end'),
             extracted.get('bill_type', 'other'),
             raw_text,
-            json.dumps(extracted)
+            json.dumps(extracted),
+            content,
+            content_type
         ))
         bill_id = cursor.lastrowid
         await db.commit()
@@ -194,6 +197,20 @@ async def list_bills():
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM bills ORDER BY created_at DESC") as cursor:
             return [dict(r) for r in await cursor.fetchall()]
+
+@router.get("/{bill_id}/file")
+async def get_bill_file(bill_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT file_data, file_mimetype FROM bills WHERE id = ?", (bill_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row or row["file_data"] is None:
+                raise HTTPException(404, "No file stored")
+            return Response(
+                content=row["file_data"],
+                media_type=row["file_mimetype"],
+                headers={"Content-Disposition": "inline"}
+            )
 
 @router.get("/{bill_id}")
 async def get_bill(bill_id: int):

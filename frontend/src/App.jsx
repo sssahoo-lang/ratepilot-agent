@@ -659,6 +659,18 @@ function NegotiationDetail({ negotiation, onBack, onRefresh, onRestart, onDelete
             <div className="detail-stat-row"><span>Savings</span><span className="mono" style={{ color: "var(--green)" }}>{savings > 0 ? "$" + savings.toFixed(0) + "/mo" : "—"}</span></div>
             <div className="detail-stat-row"><span>Rounds</span><span>{steps.filter((s) => s.step_type === "email_draft").length}</span></div>
             <div className="detail-stat-row"><span>File</span><span>{negotiation.filename || "—"}</span></div>
+            {negotiation.filename && (
+              <div className="detail-stat-row">
+                <span />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => window.open(`${API}/bills/${negotiation.bill_id}/file`, "_blank")}
+                >
+                  View original bill
+                </button>
+              </div>
+            )}
           </div>
           <div className="detail-actions">
             {negotiation.status === "failed" && negotiation.error_message && (

@@ -11,6 +11,8 @@ async def init_db():
                 filename TEXT, provider TEXT, current_amount REAL,
                 account_tenure TEXT, contract_end TEXT, bill_type TEXT,
                 raw_text TEXT, extracted_data TEXT,
+                file_data BLOB DEFAULT NULL,
+                file_mimetype TEXT DEFAULT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -38,6 +40,14 @@ async def init_db():
             pass
         try:
             await db.execute("ALTER TABLE negotiations ADD COLUMN error_message TEXT DEFAULT NULL")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE bills ADD COLUMN file_data BLOB DEFAULT NULL")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE bills ADD COLUMN file_mimetype TEXT DEFAULT NULL")
         except Exception:
             pass
         await db.execute("""
