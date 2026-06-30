@@ -53,31 +53,6 @@ def extract_json(text: str) -> dict:
     return {}
 
 
-def parse_bill(raw_text: str) -> dict:
-    """Use Claude to extract structured data from bill text."""
-    response = call_with_retry(client.messages.create,
-        model=MODEL,
-        max_tokens=1000,
-        system="""You are a bill parsing expert. Extract structured data from bill text.
-Return ONLY a JSON object with these exact fields:
-{
-  "provider": "company name",
-  "bill_type": "internet/phone/insurance/subscription/rent/utility/other",
-  "current_amount": 99.99,
-  "account_tenure": "2 years 3 months",
-  "contract_end": "March 2025 or null",
-  "account_number": "last 4 digits or null",
-  "line_count": 1,
-  "services": ["list of services included"],
-  "payment_history": "good/unknown",
-  "key_details": "any other important details"
-}
-line_count: count the number of phone lines or service lines on this bill. For a single person internet/cable bill this is 1. For a wireless family plan count each phone number listed as a separate line.
-No preamble. No markdown. JSON only.""",
-        messages=[{"role": "user", "content": f"Parse this bill:\n\n{raw_text}"}]
-    )
-    return extract_json(response.content[0].text)
-
 
 def research_competitors(provider: str, bill_type: str, current_amount: float, line_count: int = 1) -> dict:
     """Use Claude market knowledge to estimate competitor pricing."""

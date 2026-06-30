@@ -8,9 +8,9 @@
 
 ## What It Does
 
-Most people overpay on recurring bills because negotiating is time-consuming and awkward. RatePilot removes the human from the loop entirely.
+Most people overpay on recurring bills because negotiating is time-consuming and awkward. RatePilot automates the research, strategy, and drafting — so you spend minutes instead of hours.
 
-Upload a bill (PDF, photo, or text), and the agent independently researches the market, identifies leverage points, and writes a ready-to-send negotiation email grounded in real competitor data. When the provider replies, paste their response and the agent decides whether to accept, counter, or escalate — preserving full context across every round.
+Upload a bill (PDF, photo, or text), and the agent uses Claude to estimate competitor pricing, identify leverage points, and write a ready-to-send negotiation email. When the provider replies, paste their response and the agent decides whether to accept, counter, or escalate — preserving full context across every round. You stay in control: you send the email and make the final call.
 
 ---
 
@@ -42,9 +42,9 @@ The pipeline runs autonomously in eight stages:
 |---|---|
 | Upload | Bill received as PDF, TXT, or photo (JPG/PNG/WEBP/GIF) |
 | Parse | Regex extracts provider/amount; Claude vision handles photos |
-| Research | Agent finds competitor pricing, tailored to account type (individual vs. family multi-line) |
+| Research | Claude estimates competitor pricing from training knowledge, tailored to account type (individual vs. family multi-line) |
 | Strategy | Builds opening position, target price, walkaway threshold, and key arguments |
-| Draft | Writes a personalized negotiation email grounded in real account data |
+| Draft | Writes a personalized negotiation email using your bill data and estimated market rates |
 | Send | Email delivered to the provider via Gmail API (optional) |
 | Classify | Agent reads the provider reply and decides: accept / counter / escalate |
 | Track | Outcome logged; savings dashboard updated with monthly and annual projections |

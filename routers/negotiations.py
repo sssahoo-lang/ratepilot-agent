@@ -12,6 +12,18 @@ def _enrich_savings(row: dict) -> dict:
         target = float(neg.get("target_price") or 0)
         if current > 0 and target > 0 and current > target:
             neg["savings_achieved"] = current - target
+            savings = neg["savings_achieved"]
+    # Compute monthly/annual once — frontend reads these as the single source of truth
+    best = float(neg.get("best_offer_received") or 0)
+    current = float(neg.get("current_amount") or 0)
+    if best > 0 and current > 0 and current > best:
+        monthly = current - best
+    elif savings > 0:
+        monthly = savings
+    else:
+        monthly = 0.0
+    neg["monthly_savings"] = monthly
+    neg["annual_savings"] = monthly * 12
     return neg
 
 @router.get("/")
