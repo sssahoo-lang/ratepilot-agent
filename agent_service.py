@@ -53,31 +53,6 @@ def extract_json(text: str) -> dict:
     return {}
 
 
-def parse_bill(raw_text: str) -> dict:
-    """Use Claude to extract structured data from bill text."""
-    response = call_with_retry(client.messages.create,
-        model=MODEL,
-        max_tokens=1000,
-        system="""You are a bill parsing expert. Extract structured data from bill text.
-Return ONLY a JSON object with these exact fields:
-{
-  "provider": "company name",
-  "bill_type": "internet/phone/insurance/subscription/rent/utility/other",
-  "current_amount": 99.99,
-  "account_tenure": "2 years 3 months",
-  "contract_end": "March 2025 or null",
-  "account_number": "last 4 digits or null",
-  "line_count": 1,
-  "services": ["list of services included"],
-  "payment_history": "good/unknown",
-  "key_details": "any other important details"
-}
-line_count: count the number of phone lines or service lines on this bill. For a single person internet/cable bill this is 1. For a wireless family plan count each phone number listed as a separate line.
-No preamble. No markdown. JSON only.""",
-        messages=[{"role": "user", "content": f"Parse this bill:\n\n{raw_text}"}]
-    )
-    return extract_json(response.content[0].text)
-
 
 def research_competitors(provider: str, bill_type: str, current_amount: float, line_count: int = 1) -> dict:
     """Use Claude market knowledge to estimate competitor pricing."""
@@ -163,8 +138,32 @@ Round: {round_num}"""
     response = call_with_retry(client.messages.create,
         model=MODEL,
         max_tokens=1500,
-        system=f"""You are a professional negotiator writing a bill negotiation email. Write a firm, polite email using the account details and research provided. Subject line first, then email body. Be concise.
-IMPORTANT: Use ONLY the exact account number provided below. Never invent or guess an account number. If none is provided, write 'account on file' instead.{line_context}
+        system=f"""You are writing a bill negotiation email AS THE CUSTOMER — a real person writing on their own behalf, not a lawyer or "professional negotiator." It should read like an actual email a smart, reasonable customer sends: natural, plain language, firm but friendly. Use contractions. Vary sentence length. No corporate boilerplate.
+
+USE THE DATA AS PRIVATE CONTEXT, DON'T RECITE IT. The bill/research/strategy below is for you to reason from — it is NOT a list to paste into the email. Pick the ONE or TWO strongest, most natural points and build around them. A real person leads with their situation, not a spreadsheet.
+
+GROUND IT IN WHAT THE CUSTOMER ACTUALLY KNOWS: how long they've been a customer, what they currently pay, that they're a reliable account. You may mention the market the way a normal person would ("I've seen comparable plans advertised for less") but do NOT cite precise competitor prices as hard quotes — those figures are estimates and exact numbers read as fake. Keep the ask concrete (a specific target amount), the reasoning human.
+
+AVOID THESE ROBOTIC TELLS: "I am writing to formally request," opening with the account number, bullet-pointed demands, restating every stat, stiff sign-offs.
+
+If this is a reply to their offer, acknowledge it like a person would ("Thanks for getting back to me — I appreciate you coming down to $X, but...") before countering.
+
+Aim for this register (illustrative — use the REAL figures from the data):
+---
+Subject: Hoping to lower my monthly rate as a long-time customer
+
+Hi,
+
+I've been with you about three years and I've been happy with the service, but my bill's crept up to $95 a month and that's getting hard to justify. I've been looking around and there are clearly better rates out there for what I actually use.
+
+I'd much rather stay than switch — can you get me down to around $70 a month? Happy to keep things as they are otherwise.
+
+Thanks,
+Sriya
+---
+
+Account number rule: use ONLY the exact account number provided. Never invent one. If none is provided, write "account on file."{line_context}
+
 Return ONLY a valid JSON object with keys: subject, body, key_arguments_used, ask_amount, reasoning. No preamble, no markdown fences.""",
         messages=[{"role": "user", "content": context}]
     )

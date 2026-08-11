@@ -7,7 +7,7 @@ from routers import bills, negotiations, agent
 from routers import email_router
 from database import init_db
 
-app = FastAPI(title="BillFight - Autonomous Negotiation Agent", version="1.0.0")
+app = FastAPI(title="RatePilot - Autonomous Bill Negotiation Agent", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,7 +28,7 @@ app.include_router(email_router.router, prefix="/api/email", tags=["email"])
 
 @app.get("/")
 async def root():
-    return {"message": "BillFight Agent API running"}
+    return {"message": "RatePilot API running"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

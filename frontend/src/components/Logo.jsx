@@ -1,6 +1,6 @@
 import React from "react";
 
-export const BRAND_NAME = "BillFight";
+export const BRAND_NAME = "RatePilot";
 export const BRAND_TAGLINE = "AI Bill Negotiation";
 
 export function Logo({ size = 32 }) {

@@ -60,16 +60,18 @@ export const STEP_CODES = {
   reply_received: "RPL",
   escalated: "ESC",
   closed: "CLS",
+  summary: "SUM",
   error: "ERR",
 };
 
 export const STEP_LABELS = {
-  research: "Market Research",
+  research: "Competitive Analysis",
   strategy: "Strategy Built",
   email_draft: "Email Drafted",
   email_sent: "Email Sent",
   reply_received: "Reply Analyzed",
   escalated: "Escalated for Review",
   closed: "Negotiation Closed",
+  summary: "Closing Summary",
   error: "Pipeline Error",
 };
