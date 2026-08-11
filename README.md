@@ -82,7 +82,7 @@ python main.py
 
 The API runs at `http://localhost:8000`.
 
-3. Frontend setup
+3. Frontend 
 
 ```bash
 cd frontend
